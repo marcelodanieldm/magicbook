@@ -41,6 +41,11 @@ urlpatterns = [
     # Download assembled E-book as Markdown
     path('api/download/ebook/<int:pk>/', views.DownloadEbookView.as_view(), name='download_ebook'),
 
+    # Book Content — Step 12 professional editor (save/load/AI-enhance)
+    path('api/book-content/<int:pk>/save/', views.BookContentSaveView.as_view(), name='book_content_save'),
+    path('api/book-content/<int:pk>/load/', views.BookContentLoadView.as_view(), name='book_content_load'),
+    path('api/book-content/<int:pk>/enhance/', views.BookContentEnhanceView.as_view(), name='book_content_enhance'),
+
     # User Resources — knowledge injection (PDF upload / URL)
     path('api/resources/<int:pk>/upload/', views.UploadResourceView.as_view(), name='upload_resource'),
     path('api/resources/<int:resource_pk>/delete/', views.DeleteResourceView.as_view(), name='delete_resource'),

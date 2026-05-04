@@ -129,21 +129,21 @@
 
     <!-- Multi-market config -->
     <div class="mb-8 bg-gray-800/40 border border-gray-700 rounded-xl p-4">
-      <label class="block text-sm font-semibold text-gray-300 mb-2">🌎 Configuración Multi-mercado</label>
-      <p class="text-xs text-gray-500 mb-3">Plan A incluye AR, MX, CO, CL, UY, BR, ES + más. Elige tu mercado principal y los mercados objetivo.</p>
+      <label class="block text-sm font-semibold text-gray-300 mb-2" data-i18n="market.section_title">🌎 Configuración Multi-mercado</label>
+      <p class="text-xs text-gray-500 mb-3" data-i18n="market.section_desc">Elige entre mercados lingüísticos (Hispano, Anglo, Luso), regiones (LATAM, USA, Europa) o países específicos (MX, AR, BR, ES…).</p>
 
       <div class="mb-4">
-        <label class="block text-xs text-gray-400 mb-1">Mercado principal</label>
+        <label class="block text-xs text-gray-400 mb-1" data-i18n="market.primary_label">Mercado principal</label>
         {{ form.primary_market }}
       </div>
 
       <div>
-        <label class="block text-xs text-gray-400 mb-2">Mercados objetivo</label>
+        <label class="block text-xs text-gray-400 mb-2" data-i18n="market.target_label">Mercados objetivo</label>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm text-gray-300">
           {% for checkbox in form.target_markets %}
             <label class="flex items-center gap-2 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5">
               {{ checkbox.tag }}
-              <span>{{ checkbox.choice_label }}</span>
+              <span data-i18n="market.{{ checkbox.data.value }}">{{ checkbox.choice_label }}</span>
             </label>
           {% endfor %}
         </div>
@@ -153,9 +153,9 @@
     <button type="submit"
             id="create-project-submit"
             class="w-full bg-violet-600 hover:bg-violet-700 glow text-white font-bold py-4 rounded-xl text-lg transition-all">
-      Construir mi negocio con IA →
+      <span data-i18n="create.submit_btn">Construir mi negocio con IA →</span>
     </button>
-    <p id="create-project-hint" class="text-center text-gray-600 text-xs mt-4">Plan A USD29/mes: workflow completo + multi-mercado + testeos escalables</p>
+    <p id="create-project-hint" class="text-center text-gray-600 text-xs mt-4" data-i18n="create.hint">Plan A USD29/mes: workflow completo + multi-mercado + testeos escalables</p>
   </form>
 </div>
 {% endblock %}

@@ -1,6 +1,10 @@
 """Domain models for the MagicBook product generation workflow."""
 
+import uuid
+
+from django.conf import settings
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth.models import User
 
 
@@ -19,14 +23,22 @@ AI_MODEL_CHOICES = [
 ]
 
 MARKET_CHOICES = [
-    ('AR', 'Argentina'),
-    ('MX', 'México'),
-    ('CO', 'Colombia'),
-    ('CL', 'Chile'),
-    ('UY', 'Uruguay'),
-    ('BR', 'Brasil'),
-    ('ES', 'España'),
-    ('OTRO', 'Otro mercado'),
+    # ─ Mercados lingüísticos ────────────────────────────────
+    ('HISPANO', '🌎 Hispano-parlante (toda la comunidad)'),
+    ('ANGLO',   '🇬🇧 Anglo-parlante'),
+    ('LUSO',    '🇧🇷 Luso-parlante'),
+    # ─ Regiones geográficas ────────────────────────────
+    ('LATAM',   '🌎 Latinoamérica (toda la región)'),
+    ('USA',     '🇺🇸 EE.UU. / USA'),
+    ('EURO',    '🇪🇺 Europa'),
+    # ─ Países específicos ──────────────────────────────
+    ('MX', '🇲🇽 México'),
+    ('AR', '🇦🇷 Argentina'),
+    ('CO', '🇨🇴 Colombia'),
+    ('CL', '🇨🇱 Chile'),
+    ('UY', '🇺🇾 Uruguay'),
+    ('BR', '🇧🇷 Brasil'),
+    ('ES', '🇪🇸 España'),
 ]
 
 
@@ -55,7 +67,7 @@ class Project(models.Model):
         verbose_name='Modelo de IA'
     )
     primary_market = models.CharField(
-        max_length=10, choices=MARKET_CHOICES, default='AR',
+        max_length=10, choices=MARKET_CHOICES, default='LATAM',
         verbose_name='Mercado principal'
     )
     target_markets = models.JSONField(default=list, blank=True)
@@ -441,3 +453,122 @@ class PlanBEnrollment(models.Model):
 
     def __str__(self):
         return f"PlanB:{self.user.username}:{self.status}"
+
+
+class WorkflowProject(models.Model):
+    """Container for the 16-step workflow requested in the command-center spec."""
+
+    STATUS_CHOICES = [
+        ('draft', 'Borrador'),
+        ('completed', 'Completado'),
+        ('active', 'Activo'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    source_project = models.OneToOneField(
+        'Project',
+        on_delete=models.CASCADE,
+        related_name='workflow_snapshot',
+        null=True,
+        blank=True,
+    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='workflow_projects')
+    title = models.TextField()
+    niche = models.TextField(blank=True)
+    target_country = models.TextField(blank=True)
+    target_audience = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    progress_percentage = models.IntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'projects'
+        ordering = ['-created_at']
+        verbose_name = 'Workflow Project'
+
+    def __str__(self):
+        return self.title
+
+
+class ProjectStep(models.Model):
+    """Stores output JSON for each of the 16 workflow modules."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(WorkflowProject, on_delete=models.CASCADE, related_name='steps')
+    step_number = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(16)])
+    step_name = models.TextField()
+    content = models.JSONField(null=True, blank=True)
+    is_completed = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'project_steps'
+        ordering = ['step_number']
+        constraints = [
+            models.UniqueConstraint(fields=['project', 'step_number'], name='uniq_project_step_number'),
+        ]
+        verbose_name = 'Project Step'
+
+    def __str__(self):
+        return f"{self.project_id} · paso {self.step_number}"
+
+
+class BookChapter(models.Model):
+    """Stores long-form chapter text for step 12 mass content generation."""
+
+    STATUS_CHOICES = [
+        ('draft', 'Borrador'),
+        ('done', 'Completado'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(WorkflowProject, on_delete=models.CASCADE, related_name='book_chapters')
+    chapter_number = models.IntegerField()
+    title = models.TextField(blank=True)
+    body_text = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+
+    class Meta:
+        db_table = 'book_chapters'
+        ordering = ['chapter_number']
+        constraints = [
+            models.UniqueConstraint(fields=['project', 'chapter_number'], name='uniq_book_chapter_number'),
+        ]
+        verbose_name = 'Book Chapter'
+
+    def __str__(self):
+        return f"{self.project_id} · capítulo {self.chapter_number}"
+
+
+class BookContent(models.Model):
+    """Long-form chapter content for the Step-12 professional book editor."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        'Project',
+        on_delete=models.CASCADE,
+        related_name='book_contents',
+    )
+    chapter_number = models.IntegerField()
+    chapter_title = models.TextField()
+    content = models.TextField(blank=True)
+    word_count = models.IntegerField(default=0)
+    is_reviewed = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'book_content'
+        ordering = ['chapter_number']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['project', 'chapter_number'],
+                name='uniq_book_content_chapter',
+            ),
+        ]
+        verbose_name = 'Book Content'
+
+    def __str__(self):
+        return f"{self.project_id} · cap {self.chapter_number}: {self.chapter_title[:40]}"

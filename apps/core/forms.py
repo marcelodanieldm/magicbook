@@ -37,7 +37,7 @@ class ProjectCreateForm(forms.ModelForm):
 
     primary_market = forms.ChoiceField(
         choices=MARKET_CHOICES,
-        initial='AR',
+        initial='LATAM',
         widget=forms.Select(attrs={
             'class': 'w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-violet-500'
         }),

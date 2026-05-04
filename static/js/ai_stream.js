@@ -43,6 +43,40 @@ const MODULE_CONFIG = {
 };
 
 let loadingBarTimer = null;
+let loadingNarrativeTimer = null;
+
+const NARRATIVE_LINES = {
+  niche: [
+    'MagicBook esta analizando los dolores de tu audiencia...',
+    'Comparando patrones de deseo y objecion...',
+    'Definiendo avatares accionables para vender mejor...',
+  ],
+  offer: [
+    'MagicBook esta creando una oferta irresistible...',
+    'Ajustando valor percibido, bonus y garantia...',
+    'Optimizando precio para conversion inicial...',
+  ],
+  revenue: [
+    'MagicBook esta calibrando tu motor de revenue...',
+    'Diseñando order bump y upsell con logica de ticket...',
+    'Preparando flujo de monetizacion por capas...',
+  ],
+  outline: [
+    'MagicBook esta estructurando tu libro paso a paso...',
+    'Ordenando capitulos por impacto y claridad...',
+    'Preparando una ruta de transformacion para el lector...',
+  ],
+  copy: [
+    'MagicBook esta puliendo tus mensajes de venta...',
+    'Creando hooks, headlines y CTAs listos para publicar...',
+    'Alineando tono de marca con conversion...',
+  ],
+  all: [
+    'MagicBook esta construyendo tu ecosistema completo...',
+    'Conectando nicho, oferta, libro y copies en una sola narrativa...',
+    'Afinando detalles finales para lanzamiento...',
+  ],
+};
 
 function getCsrfToken() {
   const el = document.querySelector('[name=csrfmiddlewaretoken]');
@@ -66,6 +100,21 @@ function showLoading(module) {
   }
 
   const loadingBar = document.getElementById('magic-loading-bar');
+  const loadingDesc = document.getElementById('loading-desc');
+  const narrative = NARRATIVE_LINES[module] || [cfg.desc];
+  let narrativeIndex = 0;
+
+  if (loadingNarrativeTimer) {
+    window.clearInterval(loadingNarrativeTimer);
+  }
+  if (loadingDesc) {
+    loadingDesc.textContent = narrative[0];
+    loadingNarrativeTimer = window.setInterval(() => {
+      narrativeIndex = (narrativeIndex + 1) % narrative.length;
+      loadingDesc.textContent = narrative[narrativeIndex];
+    }, 1700);
+  }
+
   if (loadingBar) {
     let width = 18;
     loadingBar.style.width = `${width}%`;
@@ -99,6 +148,10 @@ function hideLoading(module) {
   if (loadingBarTimer) {
     window.clearInterval(loadingBarTimer);
     loadingBarTimer = null;
+  }
+  if (loadingNarrativeTimer) {
+    window.clearInterval(loadingNarrativeTimer);
+    loadingNarrativeTimer = null;
   }
 }
 

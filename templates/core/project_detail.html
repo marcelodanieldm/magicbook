@@ -7,6 +7,161 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
+  .magic-canvas-grid {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) minmax(320px, 1.5fr) minmax(120px, 0.45fr);
+    gap: 14px;
+  }
+  .magic-panel {
+    background: rgba(10, 10, 12, 0.92);
+    border: 1px solid rgba(63, 63, 70, 0.85);
+    border-radius: 18px;
+    min-height: 72vh;
+    overflow: hidden;
+    position: relative;
+  }
+  .chat-bubble {
+    border-radius: 14px;
+    padding: 10px 12px;
+    font-size: 13px;
+    line-height: 1.45;
+    max-width: 92%;
+  }
+  .chat-bubble.ai {
+    background: #18181b;
+    border: 1px solid #3f3f46;
+    color: #e4e4e7;
+  }
+  .chat-bubble.user {
+    margin-left: auto;
+    background: linear-gradient(135deg, #3730a3, #4338ca);
+    color: #eef2ff;
+    border: 1px solid #6366f1;
+  }
+  .inventory-dot {
+    width: 44px;
+    height: 44px;
+    border-radius: 13px;
+    border: 1px solid #3f3f46;
+    background: #18181b;
+    color: #a1a1aa;
+    display: grid;
+    place-items: center;
+    font-size: 17px;
+    transition: all .2s ease;
+  }
+  .inventory-dot.active,
+  .inventory-dot:hover {
+    color: #e4e4e7;
+    border-color: #6366f1;
+    background: #1e1b4b;
+    transform: translateY(-1px);
+  }
+  .inventory-dot.locked {
+    opacity: .35;
+    filter: grayscale(.45);
+  }
+  .birth-card {
+    border: 1px dashed #6366f1;
+    background: #111827;
+    color: #c7d2fe;
+  }
+  .avatar-pick {
+    cursor: grab;
+  }
+  .avatar-pick:active {
+    cursor: grabbing;
+  }
+  .drop-target {
+    border: 1px dashed #4f46e5;
+    background: rgba(30, 27, 75, 0.35);
+  }
+  .stage-object {
+    animation: stageIn .28s ease both;
+  }
+  @keyframes stageIn {
+    from { opacity: 0; transform: translateY(8px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .floating-edit {
+    position: absolute;
+    z-index: 25;
+    background: #111827;
+    border: 1px solid #4f46e5;
+    border-radius: 10px;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.38);
+    padding: 10px;
+    width: min(280px, 86vw);
+  }
+  .materializing-token {
+    position: fixed;
+    z-index: 80;
+    border: 1px solid #6366f1;
+    background: #1e1b4b;
+    color: #c7d2fe;
+    border-radius: 10px;
+    padding: 7px 10px;
+    font-size: 12px;
+    pointer-events: none;
+    transition: transform .55s cubic-bezier(.2,.9,.25,1), opacity .55s ease;
+  }
+  @media (max-width: 1100px) {
+    .magic-canvas-grid {
+      grid-template-columns: 1fr;
+    }
+    .magic-panel {
+      min-height: auto;
+    }
+  }
+  .zen-shell {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .floating-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    z-index: 70;
+    background: linear-gradient(90deg, #6366f1, #06b6d4, #22c55e);
+    transition: width .35s ease;
+  }
+  .step-locked {
+    opacity: .45;
+    filter: grayscale(.35);
+  }
+  .accordion-step {
+    transition: border-color .25s ease, transform .25s ease;
+  }
+  .accordion-step.is-open {
+    border-color: rgba(99, 102, 241, .6);
+    transform: translateY(-1px);
+  }
+  .accordion-body-collapsed {
+    display: none;
+  }
+  .focus-mode-shell {
+    transition: opacity .25s ease;
+  }
+  .focus-panel {
+    transition: transform .22s ease, opacity .22s ease;
+  }
+  .focus-mode-shell[data-state='closed'] {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .focus-mode-shell[data-state='closed'] .focus-panel {
+    transform: scale(.96);
+    opacity: .1;
+  }
+  .focus-mode-shell[data-state='open'] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .focus-mode-shell[data-state='open'] .focus-panel {
+    transform: scale(1);
+    opacity: 1;
+  }
   .step-glow {
     animation: stepGlow 1.6s ease-in-out infinite;
     box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.35);
@@ -57,13 +212,115 @@
     50% { transform: translateY(-4px) scale(1); opacity: .95; }
     100% { transform: translateY(8px) scale(.8); opacity: .2; }
   }
+  .journey-grid {
+    display: grid;
+    grid-template-columns: minmax(230px, 0.78fr) minmax(460px, 1.7fr) minmax(220px, 0.72fr);
+    gap: 14px;
+  }
+  .journey-shell {
+    background: #0e1015;
+    border: 1px solid #22252f;
+    border-radius: 18px;
+  }
+  .mission-step {
+    border: 1px solid #2b2f3b;
+    background: #141822;
+    color: #9ca3af;
+    border-radius: 10px;
+    padding: 8px 9px;
+    transition: all .2s ease;
+  }
+  .mission-step.is-done {
+    border-color: #0f766e;
+    background: #0f172a;
+    color: #99f6e4;
+  }
+  .mission-step.is-active {
+    border-color: #6366f1;
+    background: #1e1b4b;
+    color: #c7d2fe;
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.32);
+  }
+  .mission-step.is-locked {
+    opacity: .48;
+    filter: grayscale(.22);
+  }
+  .mission-step button {
+    width: 100%;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .step-tooltip {
+    position: absolute;
+    top: -14px;
+    right: 14px;
+    z-index: 45;
+    max-width: 230px;
+    border-radius: 10px;
+    border: 1px solid #6366f1;
+    background: #111827;
+    color: #c7d2fe;
+    padding: 8px 10px;
+    font-size: 11px;
+    line-height: 1.4;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.36);
+  }
+  .journey-flight {
+    animation: journeyFlight .45s ease;
+  }
+  @keyframes journeyFlight {
+    0% { transform: translateX(16px); opacity: .16; }
+    100% { transform: translateX(0); opacity: 1; }
+  }
+  .floating-next {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    z-index: 70;
+    border-radius: 999px;
+    border: 1px solid #6366f1;
+    background: linear-gradient(135deg, #4f46e5, #2563eb);
+    color: #eef2ff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 11px 16px;
+    box-shadow: 0 16px 30px rgba(37, 99, 235, .28);
+    transition: transform .2s ease, opacity .2s ease;
+  }
+  .floating-next:disabled {
+    opacity: .42;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  .reference-item {
+    border: 1px solid #2f3545;
+    background: #111827;
+    border-radius: 10px;
+    padding: 8px;
+  }
+  @media (max-width: 1200px) {
+    .journey-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 py-8 xl:pl-72" id="project-app" data-project-id="{{ project.pk }}">
+<div id="global-progress-line" class="floating-progress" style="width: {% widthratio launch_done_count 16 100 %}%;"></div>
+<button type="button" id="panic-reset-btn"
+  class="hidden fixed bottom-5 right-5 z-50 text-xs border border-zinc-700 bg-zinc-900/95 hover:bg-zinc-800 text-zinc-300 px-3 py-2 rounded-full shadow-lg">
+  Reiniciar paso
+</button>
+<button type="button" id="floating-next-btn" class="floating-next">
+  Siguiente Paso →
+</button>
 
-  <aside class="hidden xl:block fixed left-4 top-24 w-60 bg-zinc-900/85 border border-zinc-800 rounded-2xl p-4 backdrop-blur" aria-label="StepIndicator">
+<div class="zen-shell px-4 py-8" id="project-app" data-project-id="{{ project.pk }}">
+
+  <aside class="hidden" aria-label="StepIndicator">
     <div class="mb-3">
       <p class="text-[11px] uppercase tracking-wider text-indigo-300 font-semibold">StepIndicator</p>
       <p class="text-xs text-zinc-500">{{ launch_done_count }}/16 completados</p>
@@ -92,6 +349,22 @@
       {% endfor %}
     </div>
   </aside>
+
+  <section id="bigbang-screen" class="hidden {% if has_niche %}hidden{% endif %} fixed inset-0 z-[60] bg-zinc-950/95 backdrop-blur-md flex items-center justify-center px-4">
+    <div class="w-full max-w-3xl text-center">
+      <p class="text-xs uppercase tracking-[0.2em] text-zinc-500">MagicBook</p>
+      <h1 class="mt-4 text-3xl sm:text-5xl font-extrabold text-zinc-100">Hola, {{ request.user.first_name|default:"Marcelo" }}. Vamos a construir tu imperio digital.</h1>
+      <p class="mt-3 text-zinc-400">¿Cómo se llama tu próxima gran idea?</p>
+      <form id="bigbang-form" class="mt-8">
+        <input id="bigbang-input" type="text"
+               class="w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-6 py-6 text-lg sm:text-2xl text-zinc-100 focus:outline-none focus:border-indigo-500"
+               placeholder="Nombre del Proyecto" />
+        <button type="submit" class="mt-4 w-full sm:w-auto inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-7 py-3 rounded-xl">
+          Empezar Viaje
+        </button>
+      </form>
+    </div>
+  </section>
 
   <!-- Back + Header -->
   <div class="mb-6">
@@ -122,7 +395,96 @@
     </div>
   </div>
 
-  <div class="mb-6 bg-gray-900 border border-violet-700/40 rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+  <section id="magic-canvas-app" class="hidden mb-7">
+    <div class="magic-canvas-grid">
+      <aside class="magic-panel flex flex-col">
+        <div class="px-4 py-3 border-b border-zinc-800">
+          <p class="text-xs uppercase tracking-wider text-indigo-300">El Oraculo</p>
+          <p class="text-[11px] text-zinc-500 mt-1">Hilo de conversacion</p>
+        </div>
+        <div id="canvas-chat-log" class="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+          <div class="chat-bubble ai" id="oracle-seed-msg">
+            Hola {{ request.user.first_name|default:"Marcelo" }}. Tengo el motor encendido. Que idea vamos a convertir en un imperio hoy?
+          </div>
+        </div>
+        <form id="canvas-chat-form" class="p-3 border-t border-zinc-800">
+          <input id="canvas-chat-input" type="text"
+                 class="w-full rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100 focus:outline-none focus:border-indigo-500"
+                 placeholder="Ej: Libro de finanzas para freelancers" />
+          <div class="mt-2 flex flex-wrap gap-1.5">
+            <button type="button" class="canvas-action text-[11px] px-2 py-1 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200" data-action="research">Investigar</button>
+            <button type="button" class="canvas-action text-[11px] px-2 py-1 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200" data-action="book">Crear libro</button>
+            <button type="button" class="canvas-action text-[11px] px-2 py-1 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200" data-action="landing">Crear landing</button>
+            <button type="button" class="canvas-action text-[11px] px-2 py-1 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200" data-action="ads">Crear ads</button>
+          </div>
+        </form>
+      </aside>
+
+      <main class="magic-panel" id="canvas-stage-wrap">
+        <div class="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-wider text-emerald-300">Escenario</p>
+            <p class="text-[11px] text-zinc-500">Solo un objeto activo a la vez</p>
+          </div>
+          <div class="text-[11px] text-zinc-500">Modo: <span id="stage-mode-label">Oraculo</span></div>
+        </div>
+        <div id="stage-default" class="stage-object p-6">
+          <h2 class="text-xl font-bold text-zinc-100">The Magic Canvas</h2>
+          <p class="text-sm text-zinc-400 mt-2">Habla con la IA a la izquierda. A medida que se crean activos, se materializan y quedan guardados en tu inventario de la derecha.</p>
+        </div>
+
+        <div id="stage-avatar" class="hidden stage-object p-5">
+          <p class="text-xs uppercase tracking-wider text-zinc-500 mb-2">Paso Investigacion</p>
+          <h3 class="text-lg font-bold text-zinc-100">Elige un avatar arrastrando una tarjeta al centro</h3>
+          <div id="avatar-cards" class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2"></div>
+          <div id="avatar-drop" class="drop-target mt-4 rounded-xl p-4 min-h-[90px]">
+            <p class="text-sm text-indigo-200">Arrastra aqui el avatar elegido</p>
+            <p id="avatar-drop-text" class="text-xs text-zinc-400 mt-1">Aun no has seleccionado un perfil.</p>
+          </div>
+        </div>
+
+        <div id="stage-book" class="hidden stage-object p-5">
+          <p class="text-xs uppercase tracking-wider text-zinc-500 mb-2">Paso Libro</p>
+          <h3 class="text-lg font-bold text-zinc-100">Indice interactivo (arrastra para reordenar)</h3>
+          <ul id="book-outline-list" class="mt-3 space-y-2"></ul>
+          <div class="mt-4 bg-zinc-900 border border-zinc-700 rounded-xl p-3">
+            <label class="text-xs text-zinc-400">Profundidad del contenido</label>
+            <input id="book-depth" type="range" min="25" max="100" value="100" class="w-full mt-2" />
+            <p id="book-depth-text" class="text-xs text-zinc-400 mt-2"></p>
+            <p id="book-depth-preview" class="text-sm text-zinc-300 mt-2 leading-relaxed"></p>
+          </div>
+        </div>
+
+        <div id="stage-landing" class="hidden stage-object p-5 relative">
+          <p class="text-xs uppercase tracking-wider text-zinc-500 mb-2">Paso Landing</p>
+          <div class="border border-zinc-700 rounded-xl p-4 bg-zinc-950">
+            <p class="text-[11px] uppercase tracking-wider text-zinc-500">Hero</p>
+            <h3 id="landing-title" class="mt-2 text-2xl font-extrabold text-zinc-100 cursor-pointer">{{ project.offer_structure.product_name|default:project.title|default:"Tu Oferta" }}</h3>
+            <p class="text-sm text-zinc-400 mt-2">Haz clic en el titulo para regenerarlo con IA.</p>
+          </div>
+          <div id="landing-editor" class="floating-edit hidden">
+            <input id="landing-editor-input" type="text" class="w-full rounded-lg bg-zinc-900 border border-zinc-700 px-2.5 py-2 text-xs text-zinc-100 focus:outline-none focus:border-indigo-500" />
+            <button id="landing-editor-apply" type="button" class="mt-2 w-full text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 rounded-lg">Regenerar titulo</button>
+          </div>
+        </div>
+      </main>
+
+      <aside class="magic-panel">
+        <div class="px-3 py-3 border-b border-zinc-800">
+          <p class="text-xs uppercase tracking-wider text-fuchsia-300">Inventario</p>
+          <p class="text-[11px] text-zinc-500 mt-1">Activos desbloqueados</p>
+        </div>
+        <div id="canvas-inventory" class="p-3 flex flex-col items-center gap-2">
+          <button type="button" class="inventory-dot" data-stage="avatar" data-asset="research" title="Avatar">👤</button>
+          <button type="button" class="inventory-dot" data-stage="landing" data-asset="landing" title="Oferta/Landing">🧾</button>
+          <button type="button" class="inventory-dot" data-stage="book" data-asset="book" title="Libro">📚</button>
+          <button type="button" class="inventory-dot" data-stage="landing" data-asset="ads" title="Ads">📣</button>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <div class="hidden mb-6 bg-gray-900 border border-violet-700/40 rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
     <div>
       <p class="text-xs uppercase tracking-wider text-violet-300 font-semibold">Navegación guiada</p>
       <h2 class="text-lg font-bold text-gray-100 mt-1">{{ next_step.title }}</h2>
@@ -146,7 +508,7 @@
     </div>
   </div>
 
-  <div class="mb-8 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="the-lab">
+  <div class="hidden mb-8 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="the-lab">
     <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between gap-3">
       <div>
         <p class="text-xs uppercase tracking-wider text-violet-300 font-semibold">The Lab</p>
@@ -203,7 +565,7 @@
   </div>
 
   {% with steps_done=project.steps_completed %}
-  <div class="mb-8 overflow-x-auto">
+  <div class="hidden mb-8 overflow-x-auto">
     <div class="min-w-max flex items-center">
       {% for step in step_labels %}
       <div class="flex flex-col items-center">
@@ -230,7 +592,7 @@
   {% endwith %}
 
   {% if suggestions %}
-  <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+  <div class="hidden mb-6 grid grid-cols-1 md:grid-cols-2 gap-3">
     {% for suggestion in suggestions %}
     <div class="bg-gray-900 border border-amber-700/40 rounded-xl p-4">
       <p class="text-[11px] uppercase tracking-wider text-amber-300 font-semibold">Sugerencia IA</p>
@@ -245,21 +607,68 @@
   </div>
   {% endif %}
 
-  <!-- 4-column grid -->
-  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+  <div class="mb-5">
+    <p class="text-xs uppercase tracking-wider text-indigo-300 font-semibold">Lista de tareas inteligente</p>
+    <p class="text-sm text-zinc-400 mt-1">Solo el paso actual queda abierto. Completa uno para desbloquear el siguiente.</p>
+  </div>
+
+  <div class="journey-grid">
+    <aside class="journey-shell p-3 h-fit sticky top-20">
+      <p class="text-[11px] uppercase tracking-wider text-indigo-300 font-semibold" data-i18n="sidebar.title">Mapa de la Ruta</p>
+      <p class="text-xs text-zinc-500 mt-1 mb-3" data-i18n="sidebar.subtitle">El sidebar se ilumina a medida que completas cada módulo.</p>
+
+      <div class="space-y-3" id="mission-sidebar">
+        {% for node in launch_map_nodes %}
+          {% if forloop.counter == 1 %}
+          <div class="border border-zinc-800 rounded-xl p-2 bg-zinc-900/65">
+            <p class="text-xs font-bold text-zinc-200" data-i18n="mission.1.title">Misión 1: La Fundación</p>
+            <p class="text-[11px] text-zinc-500" data-i18n="mission.1.desc">Validar si tu idea hará dinero antes de escribir una sola palabra.</p>
+          </div>
+          {% endif %}
+          {% if forloop.counter == 5 %}
+          <div class="border border-zinc-800 rounded-xl p-2 bg-zinc-900/65">
+            <p class="text-xs font-bold text-zinc-200" data-i18n="mission.2.title">Misión 2: El Escaparate</p>
+            <p class="text-[11px] text-zinc-500" data-i18n="mission.2.desc">Tu idea empieza a verse como una empresa real.</p>
+          </div>
+          {% endif %}
+          {% if forloop.counter == 9 %}
+          <div class="border border-zinc-800 rounded-xl p-2 bg-zinc-900/65">
+            <p class="text-xs font-bold text-zinc-200" data-i18n="mission.3.title">Misión 3: Maquinaria de Ventas</p>
+            <p class="text-[11px] text-zinc-500" data-i18n="mission.3.desc">Preparamos el discurso para convencer a los desconocidos.</p>
+          </div>
+          {% endif %}
+          {% if forloop.counter == 12 %}
+          <div class="border border-zinc-800 rounded-xl p-2 bg-zinc-900/65">
+            <p class="text-xs font-bold text-zinc-200" data-i18n="mission.4.title">Misión 4: Fábrica y Escala</p>
+            <p class="text-[11px] text-zinc-500" data-i18n="mission.4.desc">Producto final y crecimiento global.</p>
+          </div>
+          {% endif %}
+
+          <div class="mission-step {% if node.status == 'done' %}is-done{% elif node.status == 'active' %}is-active{% else %}is-locked{% endif %}" data-map-step="{{ forloop.counter }}" data-map-status="{{ node.status }}" data-map-label="{{ node.label|escape }}">
+            <button type="button" class="mission-nav-btn relative group/tip" data-go-step="{{ forloop.counter }}" {% if node.status == 'pending' %}disabled{% endif %}>
+              {{ forloop.counter }}. <span data-i18n="step.{{ forloop.counter }}">{{ node.label }}</span>
+              <span class="mission-step-tip pointer-events-none absolute right-full top-1/2 -translate-y-1/2 mr-2 w-52 bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] leading-snug rounded-lg px-2.5 py-2 opacity-0 group-hover/tip:opacity-100 transition-opacity duration-200 z-50 shadow-xl hidden group-hover/tip:block" data-step-tip="{{ forloop.counter }}"></span>
+            </button>
+          </div>
+        {% endfor %}
+      </div>
+    </aside>
+
+    <main class="space-y-4" id="guided-journey-center">
+      <div id="sequential-steps" class="space-y-4">
 
     <!-- ══════════════════════════════════════
          CARD 1: ANÁLISIS DE NICHO
     ══════════════════════════════════════ -->
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-niche">
+    <div class="accordion-step bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-niche" data-step-key="niche" data-step-order="1" data-step-label="Investigación">
       <div class="flex items-center justify-between p-5 border-b border-gray-800">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 rounded-lg bg-violet-900/60 border border-violet-700/60 flex items-center justify-center">
             <span class="text-lg">🎯</span>
           </div>
           <div>
-            <h2 class="font-bold text-gray-100">Análisis de Nicho</h2>
-            <p class="text-gray-500 text-xs">Avatar + Dolores + Deseos</p>
+            <h2 class="font-bold text-gray-100" data-i18n="card.niche.title">Análisis de Nicho</h2>
+            <p class="text-gray-500 text-xs" data-i18n="card.niche.sub">Avatar + Dolores + Deseos</p>
           </div>
         </div>
         {% if has_niche %}
@@ -268,6 +677,8 @@
       </div>
 
       <div class="p-5">
+        <p class="text-[11px] uppercase tracking-wider text-indigo-300 font-semibold mb-1" data-i18n="ui.what_for">¿Para qué sirve esto?</p>
+        <p class="text-xs text-zinc-500 mb-3" data-i18n="card.niche.hint">Si intentas venderle a todo el mundo, no le vendes a nadie. Aquí definiremos a quién le duele más tu solución.</p>
         <!-- Skeleton -->
         <div id="skeleton-niche" class="hidden space-y-3">
           <div class="skeleton h-4 rounded w-3/4"></div>
@@ -370,15 +781,15 @@
     <!-- ══════════════════════════════════════
          CARD 2: ESTRUCTURA DE OFERTA
     ══════════════════════════════════════ -->
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-offer">
+    <div class="accordion-step bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-offer" data-step-key="offer" data-step-order="2" data-step-label="Oferta" data-requires="niche">
       <div class="flex items-center justify-between p-5 border-b border-gray-800">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 rounded-lg bg-yellow-900/60 border border-yellow-700/60 flex items-center justify-center">
             <span class="text-lg">💎</span>
           </div>
           <div>
-            <h2 class="font-bold text-gray-100">Oferta Irresistible</h2>
-            <p class="text-gray-500 text-xs">Precio · Bonuses · Garantía</p>
+            <h2 class="font-bold text-gray-100" data-i18n="card.offer.title">Oferta Irresistible</h2>
+            <p class="text-gray-500 text-xs" data-i18n="card.offer.sub">Precio · Bonuses · Garantía</p>
           </div>
         </div>
         {% if has_offer %}
@@ -387,6 +798,8 @@
       </div>
 
       <div class="p-5">
+        <p class="text-[11px] uppercase tracking-wider text-indigo-300 font-semibold mb-1" data-i18n="ui.what_for">¿Para qué sirve esto?</p>
+        <p class="text-xs text-zinc-500 mb-3" data-i18n="card.offer.hint">Ahora, convertimos el insight en una oferta irresistible.</p>
         <div id="skeleton-offer" class="hidden space-y-3">
           <div class="skeleton h-6 rounded w-2/3"></div>
           <div class="skeleton h-4 rounded w-full"></div>
@@ -501,15 +914,15 @@
     <!-- ══════════════════════════════════════
          CARD 3: REVENUE MANAGEMENT
     ══════════════════════════════════════ -->
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-revenue">
+    <div class="accordion-step bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-revenue" data-step-key="revenue" data-step-order="4" data-step-label="Revenue" data-requires="offer">
       <div class="flex items-center justify-between p-5 border-b border-gray-800">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 rounded-lg bg-emerald-900/60 border border-emerald-700/60 flex items-center justify-center">
             <span class="text-lg">💸</span>
           </div>
           <div>
-            <h2 class="font-bold text-gray-100">Revenue Management</h2>
-            <p class="text-gray-500 text-xs">Order Bump · Upsell · OTO</p>
+            <h2 class="font-bold text-gray-100" data-i18n="card.revenue.title">Revenue Management</h2>
+            <p class="text-gray-500 text-xs" data-i18n="card.revenue.sub">Order Bump · Upsell · OTO</p>
           </div>
         </div>
         {% if has_revenue %}
@@ -518,6 +931,8 @@
       </div>
 
       <div class="p-5">
+        <p class="text-[11px] uppercase tracking-wider text-indigo-300 font-semibold mb-1" data-i18n="ui.what_for">¿Para qué sirve esto?</p>
+        <p class="text-xs text-zinc-500 mb-3" data-i18n="card.revenue.hint">Optimiza ticket promedio antes de escalar tráfico.</p>
         <div id="skeleton-revenue" class="hidden space-y-3">
           <div class="skeleton h-4 rounded w-2/3"></div>
           <div class="skeleton h-4 rounded w-full"></div>
@@ -578,15 +993,15 @@
     <!-- ══════════════════════════════════════
          CARD 4: ÍNDICE DEL INFOPRODUCTO
     ══════════════════════════════════════ -->
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-outline">
+    <div class="accordion-step bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-outline" data-step-key="outline" data-step-order="3" data-step-label="El Libro" data-requires="offer">
       <div class="flex items-center justify-between p-5 border-b border-gray-800">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 rounded-lg bg-blue-900/60 border border-blue-700/60 flex items-center justify-center">
             <span class="text-lg">📚</span>
           </div>
           <div>
-            <h2 class="font-bold text-gray-100">Índice del Infoproducto</h2>
-            <p class="text-gray-500 text-xs">E-book · 10 capítulos</p>
+            <h2 class="font-bold text-gray-100" data-i18n="card.outline.title">Índice del Infoproducto</h2>
+            <p class="text-gray-500 text-xs" data-i18n="card.outline.sub">E-book · 10 capítulos</p>
           </div>
         </div>
         {% if has_outline %}
@@ -595,6 +1010,8 @@
       </div>
 
       <div class="p-5">
+        <p class="text-[11px] uppercase tracking-wider text-indigo-300 font-semibold mb-1" data-i18n="ui.what_for">¿Para qué sirve esto?</p>
+        <p class="text-xs text-zinc-500 mb-3" data-i18n="card.outline.hint">Con la oferta validada, armamos la estructura del libro.</p>
         <div id="skeleton-outline" class="hidden space-y-3">
           <div class="skeleton h-5 rounded w-4/5"></div>
           <div class="skeleton h-3 rounded w-full"></div>
@@ -669,15 +1086,15 @@
         <!-- ══════════════════════════════════════
           CARD 5: BIBLIOTECA DE COPIES
         ══════════════════════════════════════ -->
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-copy">
+    <div class="accordion-step bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-copy" data-step-key="copy" data-step-order="5" data-step-label="Copies" data-requires="outline">
       <div class="flex items-center justify-between p-5 border-b border-gray-800">
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 rounded-lg bg-pink-900/60 border border-pink-700/60 flex items-center justify-center">
             <span class="text-lg">✍️</span>
           </div>
           <div>
-            <h2 class="font-bold text-gray-100">Biblioteca de Copies</h2>
-            <p class="text-gray-500 text-xs">Headlines · Hooks · PAS · AIDA</p>
+            <h2 class="font-bold text-gray-100" data-i18n="card.copy.title">Biblioteca de Copies</h2>
+            <p class="text-gray-500 text-xs" data-i18n="card.copy.sub">Headlines · Hooks · PAS · AIDA</p>
           </div>
         </div>
         {% if has_copy %}
@@ -686,6 +1103,8 @@
       </div>
 
       <div class="p-5">
+        <p class="text-[11px] uppercase tracking-wider text-indigo-300 font-semibold mb-1" data-i18n="ui.what_for">¿Para qué sirve esto?</p>
+        <p class="text-xs text-zinc-500 mb-3" data-i18n="card.copy.hint">Pulimos el mensaje final para publicar y vender.</p>
         <div id="skeleton-copy" class="hidden space-y-3">
           <div class="skeleton h-4 rounded w-full"></div>
           <div class="skeleton h-4 rounded w-3/4"></div>
@@ -805,7 +1224,205 @@
       </div>
     </div>
 
-  </div><!-- end grid -->
+    <!-- ══════════════════════════════════════
+         CARD 12: FÁBRICA DE LIBROS
+    ══════════════════════════════════════ -->
+    <div class="accordion-step bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden accordion-body-collapsed" id="card-book" data-step-key="book" data-step-order="12" data-step-label="Fábrica de Libros" data-requires="copy">
+      <div class="flex items-center justify-between p-5 border-b border-gray-800">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-amber-900/60 border border-amber-700/60 flex items-center justify-center">
+            <span class="text-lg">📚</span>
+          </div>
+          <div>
+            <h2 class="font-bold text-gray-100" data-i18n="book.title">El Infoproducto</h2>
+            <p class="text-gray-500 text-xs" data-i18n="book.sub">Editor Profesional · 15,000 – 25,000 palabras</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="book-total-words-badge" class="hidden text-xs bg-amber-900/40 border border-amber-700 text-amber-300 px-3 py-1 rounded-full font-medium"></span>
+          {% if has_copy %}
+          <a href="{% url 'core:download_ebook' project.pk %}" class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white font-semibold px-3 py-1.5 rounded-lg transition-all" data-i18n="ui.download_ebook">⬇️ Descargar</a>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="p-5">
+        <p class="text-[11px] uppercase tracking-wider text-amber-400 font-semibold mb-1" data-i18n="ui.what_for">¿Para qué sirve esto?</p>
+        <p class="text-xs text-zinc-500 mb-4" data-i18n="book.what_for">El generador masivo. Aquí la IA redacta las 40–80 páginas de tu libro o curso. Escribe capítulo a capítulo o activa el Modo Fábrica para escribirlo todo de una vez.</p>
+
+        <!-- Word count progress bar -->
+        <div class="mb-5 p-3 bg-zinc-800/60 border border-zinc-700 rounded-xl">
+          <div class="flex items-center justify-between text-xs mb-2">
+            <span class="text-zinc-400 font-medium" data-i18n="book.progress_label">Progreso del manuscrito</span>
+            <span id="book-word-count-label" class="text-amber-300 font-bold">0 / 15,000 palabras</span>
+          </div>
+          <div class="w-full bg-zinc-700 rounded-full h-2.5">
+            <div id="book-word-bar" class="bg-gradient-to-r from-amber-500 to-emerald-400 h-2.5 rounded-full transition-all duration-700" style="width:0%"></div>
+          </div>
+          <div class="flex justify-between text-[10px] text-zinc-600 mt-1">
+            <span>0</span><span>Meta mínima: 15,000</span><span>25,000</span>
+          </div>
+        </div>
+
+        <!-- Length validator warning (shown when active chapter < 800 words on review attempt) -->
+        <div id="book-length-warning" class="hidden flex items-start gap-2 bg-red-950/60 border border-red-700/60 text-red-300 text-xs rounded-xl px-3 py-2.5 mb-2">
+          <span class="text-base leading-none mt-0.5">⚠️</span>
+          <div>
+            <p class="font-semibold" data-i18n="val.short_title">Capítulo muy corto para marcar como revisado</p>
+            <p id="book-length-warning-detail" class="text-red-400/80 mt-0.5">Un capítulo necesita mínimo 800 palabras. Este tiene 0.</p>
+          </div>
+        </div>
+
+        <!-- 3-panel professional editor -->
+        <div class="grid grid-cols-[220px_1fr] gap-4" id="book-editor-wrap">
+
+          <!-- LEFT: Chapter Index -->
+          <div class="bg-zinc-800/50 border border-zinc-700 rounded-xl overflow-hidden">
+            <div class="px-3 py-2 border-b border-zinc-700 bg-zinc-800">
+              <p class="text-[11px] font-bold text-zinc-300 uppercase tracking-wider" data-i18n="book.index_title">Índice</p>
+            </div>
+            <div id="book-chapter-index" class="divide-y divide-zinc-700/50 overflow-y-auto max-h-[520px]">
+              {% if has_outline %}
+                {% for ch in project.product_outline.chapters %}
+                {% with chnum=forloop.counter %}
+                <button type="button"
+                        class="book-chapter-btn w-full text-left px-3 py-2.5 hover:bg-zinc-700/50 transition-colors group"
+                        data-chapter="{{ chnum }}"
+                        data-title="{{ ch.title|escapejs }}">
+                  <div class="flex items-start gap-2">
+                    <span class="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-zinc-700 text-zinc-400 text-[10px] font-bold flex items-center justify-center group-hover:bg-amber-700/60 group-hover:text-amber-200 transition-colors book-ch-num-{{ chnum }}">{{ chnum }}</span>
+                    <div class="min-w-0">
+                      <p class="text-xs text-zinc-300 leading-snug truncate">{{ ch.title }}</p>
+                      <span class="book-ch-status-{{ chnum }} text-[10px] text-zinc-500 mt-0.5 block">Pendiente</span>
+                    </div>
+                  </div>
+                </button>
+                {% endwith %}
+                {% empty %}
+                <p class="text-xs text-zinc-600 p-3 italic">Sin capítulos aún.</p>
+                {% endfor %}
+              {% else %}
+                <p class="text-xs text-zinc-600 p-3 italic">Completa el Índice (paso 3) primero.</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- CENTER: Zen Editor -->
+          <div class="flex flex-col gap-3">
+
+            <!-- Chapter header -->
+            <div class="flex items-center justify-between">
+              <div>
+                <p id="book-active-chapter-label" class="text-xs text-amber-400 font-semibold uppercase tracking-wider" data-i18n="book.select_chapter">Selecciona un capítulo →</p>
+                <p id="book-active-chapter-title" class="text-sm font-bold text-zinc-100 mt-0.5"></p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="book-chapter-wc" class="text-[10px] text-zinc-500"></span>
+                <button id="book-write-btn"
+                        class="hidden text-xs bg-amber-600 hover:bg-amber-500 text-white font-bold px-3 py-1.5 rounded-lg transition-all"
+                        onclick="bookWriteActiveChapter()" data-i18n="book.write_btn">
+                  ⚡ Escribir con IA
+                </button>
+                <button id="book-save-btn"
+                        class="hidden text-xs bg-emerald-700 hover:bg-emerald-600 text-white font-semibold px-3 py-1.5 rounded-lg transition-all"
+                        onclick="bookSaveActiveChapter()" data-i18n="book.save_btn">
+                  💾 Guardar
+                </button>
+                <label class="hidden items-center gap-1.5 text-xs text-zinc-400 cursor-pointer" id="book-reviewed-wrap">
+                  <input type="checkbox" id="book-reviewed-chk" class="accent-emerald-500" onchange="bookToggleReviewed()">
+                  <span data-i18n="book.reviewed">Revisado ✓</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Zen text area -->
+            <div class="relative">
+              <textarea id="book-zen-editor"
+                        class="w-full min-h-[400px] bg-zinc-900 border border-zinc-700 focus:border-amber-500/70 rounded-xl px-5 py-4 text-sm text-zinc-200 leading-relaxed resize-y font-mono focus:outline-none placeholder-zinc-700 transition-colors"
+                        placeholder="Selecciona un capítulo del índice izquierdo para empezar a escribir…"
+                        oninput="bookOnEditorInput()"
+                        disabled></textarea>
+
+              <!-- AI Toolbar (floating inside editor area) -->
+              <div id="book-ai-toolbar"
+                   class="hidden absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-zinc-800 border border-zinc-600 rounded-full px-3 py-1.5 shadow-lg">
+                <button type="button" class="book-enhance-btn text-xs text-zinc-300 hover:text-amber-300 transition-colors px-2 py-1 rounded-full hover:bg-zinc-700" data-action="expand" data-i18n="book.expand">
+                  ✨ Expandir Sección
+                </button>
+                <span class="text-zinc-600">|</span>
+                <button type="button" class="book-enhance-btn text-xs text-zinc-300 hover:text-sky-300 transition-colors px-2 py-1 rounded-full hover:bg-zinc-700" data-action="tone" data-i18n="book.tone">
+                  ✍️ Cambiar Tono
+                </button>
+                <span class="text-zinc-600">|</span>
+                <button type="button" class="book-enhance-btn text-xs text-zinc-300 hover:text-emerald-300 transition-colors px-2 py-1 rounded-full hover:bg-zinc-700" data-action="example" data-i18n="book.example">
+                  💡 Añadir Ejemplo
+                </button>
+                <span class="text-zinc-600">|</span>
+                <button type="button" class="text-[10px] text-zinc-600 hover:text-red-400 transition-colors" onclick="bookHideToolbar()">✕</button>
+              </div>
+            </div>
+
+            <!-- Toolbar hint -->
+            <p class="text-[10px] text-zinc-600">
+              <span data-i18n="book.toolbar_hint">Selecciona texto en el editor y haz clic en</span>
+              <button type="button" class="text-amber-500 hover:underline" onclick="bookShowToolbar()" data-i18n="book.toolbar_cta">Herramientas IA</button>
+              para mejorar cualquier fragmento.
+            </p>
+
+            {% if has_outline %}
+            <!-- Factory mode button -->
+            <div class="flex items-center justify-between bg-zinc-800/60 border border-zinc-700 rounded-xl px-4 py-3">
+              <div>
+                <p class="text-xs font-semibold text-zinc-200" data-i18n="book.factory_title">🏭 Modo Fábrica</p>
+                <p class="text-[11px] text-zinc-500">Escribe todos los {{ project.product_outline.chapters|length }} capítulos en secuencia automáticamente.</p>
+              </div>
+              <button onclick="writeAllChapters({{ project.pk }})" id="factory-btn"
+                      class="shrink-0 bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition-all whitespace-nowrap" data-i18n="book.factory_btn">
+                ⚡ Escribir Todo
+              </button>
+            </div>
+            <div id="factory-progress-wrap" class="hidden">
+              <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
+                <span id="factory-status-text">Iniciando...</span>
+                <span id="factory-percent">0%</span>
+              </div>
+              <div class="w-full bg-gray-700 rounded-full h-2">
+                <div id="factory-progress-bar" class="bg-amber-500 h-2 rounded-full transition-all duration-500" style="width:0%"></div>
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div><!-- /book-editor-wrap -->
+      </div>
+    </div>
+    <!-- /CARD 12 -->
+
+      </div>
+    </main>
+
+    <aside class="journey-shell p-3 h-fit sticky top-20">
+      <p class="text-[11px] uppercase tracking-wider text-emerald-300 font-semibold">Referencia</p>
+      <p id="reference-headline" class="text-xs text-zinc-400 mt-1">Resumen del paso anterior para no perder contexto.</p>
+      <div id="reference-list" class="mt-3 space-y-2">
+        {% for node in launch_map_nodes %}
+          {% if node.status == 'done' %}
+          <div class="reference-item" data-ref-step="{{ forloop.counter }}">
+            <p class="text-[11px] text-emerald-300 font-semibold">{{ forloop.counter }}. {{ node.label }}</p>
+            <p class="text-[11px] text-zinc-400 mt-1">{{ node.summary }}</p>
+          </div>
+          {% endif %}
+        {% empty %}
+          <div class="reference-item">
+            <p class="text-[11px] text-zinc-500">Todavía no hay decisiones guardadas. Empecemos por el paso 1.</p>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="mt-3 reference-item">
+        <p class="text-[11px] uppercase tracking-wider text-indigo-300">Contexto Activo</p>
+        <p id="step-reference-text" class="text-xs text-zinc-400 mt-1">Selecciona un paso para ver su objetivo y referencia inmediata.</p>
+      </div>
+    </aside>
+  </div>
 
   <!-- ═══════════════════════════════════════════════════════════
        CHAPTER WRITER — Fase 2: Escritura Individual de Capítulos
@@ -814,7 +1431,7 @@
   {% if has_outline %}
 
   <!-- ── Knowledge Injection Panel ──────────────────────────── -->
-  <div class="mt-10 bg-gray-900 border border-gray-800 rounded-2xl p-6">
+  <div class="hidden mt-10 bg-gray-900 border border-gray-800 rounded-2xl p-6">
     <div class="flex items-start gap-4 mb-5">
       <div class="text-2xl mt-0.5">🧠</div>
       <div class="flex-1">
@@ -905,7 +1522,7 @@
   </div>
 
   <!-- ── Chapter Writer Panel ────────────────────────────────── -->
-  <div class="mt-6 bg-gray-900 border border-gray-800 rounded-2xl p-6">
+  <div class="hidden mt-6 bg-gray-900 border border-gray-800 rounded-2xl p-6">
     <!-- Header row: title + badges + factory button -->
     <div class="flex flex-wrap items-start gap-4 mb-6">
       <div class="flex-1">
@@ -969,8 +1586,10 @@
     <div class="space-y-3" id="chapter-list">
       {% for ch in project.product_outline.chapters %}
       {% with chapter_num=forloop.counter %}
-      <div class="chapter-row flex items-center gap-4 bg-gray-800/50 rounded-xl px-4 py-3"
-           id="chapter-row-{{ chapter_num }}" data-chapter="{{ chapter_num }}">
+       <div class="chapter-row flex items-center gap-4 bg-gray-800/50 rounded-xl px-4 py-3"
+         id="chapter-row-{{ chapter_num }}" data-chapter="{{ chapter_num }}"
+         data-content="{{ chapter_contents|dict_get:chapter_num|default:''|escapejs }}"
+         data-title="{{ ch.title|escapejs }}">
 
         <!-- Number badge -->
         <span class="shrink-0 w-8 h-8 rounded-full bg-gray-700 text-gray-300 text-sm font-bold flex items-center justify-center">
@@ -1007,6 +1626,11 @@
                 class="shrink-0 text-xs border border-zinc-700 hover:border-amber-500 text-zinc-400 hover:text-amber-300 font-semibold px-3 py-1.5 rounded-lg transition-all {% if chapter_num not in undo_available_chapters %}hidden{% endif %}"
                 id="undo-btn-{{ chapter_num }}">
           ↶ Undo
+        </button>
+        <button type="button"
+                class="focus-open-btn shrink-0 text-xs border border-indigo-700 hover:border-indigo-500 text-indigo-300 px-3 py-1.5 rounded-lg transition-all"
+                data-chapter="{{ chapter_num }}">
+          Focus Mode
         </button>
       </div>
       {% endwith %}
@@ -1056,13 +1680,887 @@
   </div>
 </div>
 
+<div id="focus-mode" class="hidden focus-mode-shell fixed inset-0 z-50 bg-zinc-950/95 p-4" data-state="closed">
+  <div class="focus-panel h-full max-w-7xl mx-auto border border-zinc-800 bg-zinc-900 rounded-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-2">
+    <div class="p-5 border-b lg:border-b-0 lg:border-r border-zinc-800 flex flex-col">
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <p class="text-xs uppercase tracking-wider text-indigo-300">Focus Mode</p>
+          <h3 id="focus-title" class="text-lg font-bold text-zinc-100">Capítulo</h3>
+        </div>
+        <button type="button" id="focus-close" class="text-xs text-zinc-400 hover:text-zinc-200">Cerrar</button>
+      </div>
+      <textarea id="focus-editor"
+                class="flex-1 w-full bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-4 text-sm leading-relaxed text-zinc-100 focus:outline-none focus:border-indigo-500"
+                placeholder="Selecciona un capítulo escrito para editar en Focus Mode"></textarea>
+    </div>
+    <div class="p-5 bg-zinc-950/40 flex flex-col">
+      <p class="text-xs uppercase tracking-wider text-zinc-500 mb-3">Comandos Mágicos</p>
+      <div class="space-y-2">
+        <button type="button" class="focus-command w-full text-left bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-xl px-4 py-3" data-cmd="shorter">Mas corto</button>
+        <button type="button" class="focus-command w-full text-left bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-xl px-4 py-3" data-cmd="tone">Cambiar tono</button>
+        <button type="button" class="focus-command w-full text-left bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 rounded-xl px-4 py-3" data-cmd="example">Anadir ejemplo practico</button>
+      </div>
+      <p id="focus-status" class="text-xs text-zinc-500 mt-4">Listo para editar.</p>
+      <div class="mt-auto pt-4">
+        <button type="button" id="focus-done" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-semibold py-3 rounded-xl">
+          Listo
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script src="/static/js/ai_stream.js"></script>
 <script>
-  // Pass step labels to the template context
+  const canvasData = {
+    avatars: [
+      {% if project.avatar_profile and project.avatar_profile.avatars %}
+        {% for av in project.avatar_profile.avatars|slice:":3" %}
+        {
+          name: "{{ av.name|default:'Avatar'|escapejs }}",
+          pain: "{{ av.main_pain|default:'Dolor principal no definido'|escapejs }}",
+          trigger: "{{ av.purchase_trigger|default:'Trigger de compra no definido'|escapejs }}",
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      {% endif %}
+    ],
+    chapters: [
+      {% if project.product_outline and project.product_outline.chapters %}
+        {% for ch in project.product_outline.chapters %}
+        { number: {{ ch.number|default:forloop.counter }}, title: "{{ ch.title|default:'Capitulo'|escapejs }}" }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+      {% endif %}
+    ],
+    previewText: "{{ project.niche_input|default:'Tu contenido aparecera aqui.'|escapejs }}",
+    hasNiche: {{ has_niche|yesno:"true,false" }},
+    hasOutline: {{ has_outline|yesno:"true,false" }},
+    hasCopy: {{ has_copy|yesno:"true,false" }},
+    hasOffer: {{ has_offer|yesno:"true,false" }},
+  };
+
+  (function initMagicCanvas() {
+    const chatLog = document.getElementById('canvas-chat-log');
+    const chatForm = document.getElementById('canvas-chat-form');
+    const chatInput = document.getElementById('canvas-chat-input');
+    const inventory = document.getElementById('canvas-inventory');
+    const stageLabel = document.getElementById('stage-mode-label');
+    const stageViews = {
+      default: document.getElementById('stage-default'),
+      avatar: document.getElementById('stage-avatar'),
+      book: document.getElementById('stage-book'),
+      landing: document.getElementById('stage-landing'),
+    };
+    if (!chatLog || !chatForm || !chatInput || !inventory || !stageLabel) {
+      return;
+    }
+
+    const stageNames = {
+      default: 'Oraculo',
+      avatar: 'Investigacion',
+      book: 'Libro',
+      landing: 'Landing',
+    };
+
+    const unlockedAssets = {
+      research: canvasData.hasNiche,
+      landing: canvasData.hasOffer,
+      book: canvasData.hasOutline,
+      ads: canvasData.hasCopy,
+    };
+
+    const defaultAvatars = [
+      { name: 'Freelancer Saturado', pain: 'Trabaja mucho pero no logra estabilidad.', trigger: 'Quiere previsibilidad de ingresos.' },
+      { name: 'Consultor Tecnico', pain: 'No convierte reuniones en ventas.', trigger: 'Necesita propuesta mas clara.' },
+      { name: 'Creador Novato', pain: 'Publica contenido sin estrategia.', trigger: 'Busca un sistema simple y repetible.' },
+    ];
+
+    const avatars = (canvasData.avatars && canvasData.avatars.length) ? canvasData.avatars : defaultAvatars;
+    const chapters = (canvasData.chapters && canvasData.chapters.length)
+      ? [...canvasData.chapters]
+      : [
+          { number: 1, title: 'Diagnostico financiero rapido' },
+          { number: 2, title: 'Sistema de ingresos recurrentes' },
+          { number: 3, title: 'Plan de accion de 30 dias' },
+        ];
+
+    function appendChat(role, text) {
+      const bubble = document.createElement('div');
+      bubble.className = `chat-bubble ${role === 'user' ? 'user' : 'ai'}`;
+      bubble.textContent = text;
+      chatLog.appendChild(bubble);
+      chatLog.scrollTop = chatLog.scrollHeight;
+      return bubble;
+    }
+
+    function showStage(stage) {
+      Object.entries(stageViews).forEach(([key, el]) => {
+        if (!el) return;
+        el.classList.toggle('hidden', key !== stage);
+      });
+      stageLabel.textContent = stageNames[stage] || 'Oraculo';
+      inventory.querySelectorAll('.inventory-dot').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.stage === stage);
+      });
+    }
+
+    function syncInventory() {
+      inventory.querySelectorAll('.inventory-dot').forEach((btn) => {
+        const asset = btn.dataset.asset;
+        const isUnlocked = !!unlockedAssets[asset];
+        btn.classList.toggle('locked', !isUnlocked);
+      });
+    }
+
+    function materializeToken(label, fromEl, toEl) {
+      if (!fromEl || !toEl) return;
+      const from = fromEl.getBoundingClientRect();
+      const to = toEl.getBoundingClientRect();
+      const token = document.createElement('div');
+      token.className = 'materializing-token';
+      token.textContent = label;
+      token.style.left = `${from.left + 8}px`;
+      token.style.top = `${from.top + 6}px`;
+      document.body.appendChild(token);
+
+      requestAnimationFrame(() => {
+        token.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(.78)`;
+        token.style.opacity = '0.15';
+      });
+
+      window.setTimeout(() => token.remove(), 620);
+    }
+
+    function unlockAsset(asset, stage, aiCopy) {
+      unlockedAssets[asset] = true;
+      syncInventory();
+      const target = inventory.querySelector(`.inventory-dot[data-asset='${asset}']`);
+      const source = chatLog.lastElementChild;
+      if (target && source) {
+        materializeToken(aiCopy || 'Nuevo activo', source, target);
+      }
+      if (aiCopy) appendChat('ai', aiCopy);
+      showStage(stage);
+    }
+
+    function renderAvatarCards() {
+      const wrap = document.getElementById('avatar-cards');
+      const drop = document.getElementById('avatar-drop');
+      const dropText = document.getElementById('avatar-drop-text');
+      if (!wrap || !drop || !dropText) return;
+      wrap.innerHTML = '';
+      avatars.forEach((av, idx) => {
+        const card = document.createElement('div');
+        card.className = 'avatar-pick birth-card rounded-xl p-3 text-xs';
+        card.draggable = true;
+        card.dataset.avatar = JSON.stringify(av);
+        card.innerHTML = `<p class='font-semibold text-indigo-200'>${av.name}</p><p class='text-zinc-300 mt-1'>${av.pain}</p><p class='text-zinc-500 mt-1'>${av.trigger}</p>`;
+        card.addEventListener('dragstart', (ev) => ev.dataTransfer.setData('text/plain', card.dataset.avatar));
+        wrap.appendChild(card);
+      });
+      drop.addEventListener('dragover', (ev) => ev.preventDefault());
+      drop.addEventListener('drop', (ev) => {
+        ev.preventDefault();
+        const raw = ev.dataTransfer.getData('text/plain');
+        if (!raw) return;
+        const selected = JSON.parse(raw);
+        dropText.textContent = `${selected.name} seleccionado. Dolor clave: ${selected.pain}`;
+        appendChat('ai', `Perfecto. Nos quedamos con ${selected.name} como cliente principal.`);
+      });
+    }
+
+    function renderBookOutline() {
+      const list = document.getElementById('book-outline-list');
+      const depth = document.getElementById('book-depth');
+      const depthText = document.getElementById('book-depth-text');
+      const depthPreview = document.getElementById('book-depth-preview');
+      if (!list || !depth || !depthText || !depthPreview) return;
+
+      let dragIndex = null;
+      const repaint = () => {
+        list.innerHTML = '';
+        chapters.forEach((ch, idx) => {
+          const li = document.createElement('li');
+          li.className = 'rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 cursor-move';
+          li.draggable = true;
+          li.dataset.index = String(idx);
+          li.innerHTML = `<span class='text-zinc-500 mr-2'>${idx + 1}.</span>${ch.title}`;
+          li.addEventListener('dragstart', () => { dragIndex = idx; });
+          li.addEventListener('dragover', (ev) => ev.preventDefault());
+          li.addEventListener('drop', () => {
+            if (dragIndex === null || dragIndex === idx) return;
+            const [moved] = chapters.splice(dragIndex, 1);
+            chapters.splice(idx, 0, moved);
+            dragIndex = null;
+            repaint();
+            appendChat('ai', 'Indice actualizado. Reorganicé el libro con tu nuevo orden.');
+          });
+          list.appendChild(li);
+        });
+      };
+      repaint();
+
+      const base = (canvasData.previewText || 'Contenido base del libro para ajustar profundidad.').trim();
+      const syncDepth = () => {
+        const v = Number(depth.value || 100);
+        depthText.textContent = `Profundidad: ${v}%`;
+        const words = base.split(/\s+/).filter(Boolean);
+        const count = Math.max(8, Math.floor(words.length * (v / 100)));
+        depthPreview.textContent = words.slice(0, count).join(' ');
+      };
+      depth.addEventListener('input', syncDepth);
+      syncDepth();
+    }
+
+    async function initLandingEditor() {
+      const title = document.getElementById('landing-title');
+      const editor = document.getElementById('landing-editor');
+      const input = document.getElementById('landing-editor-input');
+      const apply = document.getElementById('landing-editor-apply');
+      if (!title || !editor || !input || !apply) return;
+
+      title.addEventListener('click', () => {
+        editor.classList.remove('hidden');
+        editor.style.top = `${title.offsetTop + title.offsetHeight + 12}px`;
+        editor.style.left = `${Math.min(title.offsetLeft, 32)}px`;
+        input.value = title.textContent.trim();
+        input.focus();
+      });
+
+      apply.addEventListener('click', async () => {
+        const seed = input.value.trim();
+        if (!seed) return;
+        apply.disabled = true;
+        apply.textContent = 'Regenerando...';
+        try {
+          const csrf = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+          const resp = await fetch(`/dashboard/api/rewrite/paragraph/${projectId}/`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': csrf, 'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              paragraph: seed,
+              tone: 'headline de landing claro, directo y persuasivo',
+              context: 'Titulo principal de landing page',
+            }),
+          });
+          const data = await resp.json();
+          if (!data.success) throw new Error(data.error || 'No se pudo regenerar.');
+          title.textContent = data.rewritten || seed;
+          appendChat('ai', 'He regenerado el titulo de la landing con mejor claridad de conversion.');
+          editor.classList.add('hidden');
+        } catch (err) {
+          appendChat('ai', `No pude regenerarlo ahora: ${err.message}`);
+        } finally {
+          apply.disabled = false;
+          apply.textContent = 'Regenerar titulo';
+        }
+      });
+    }
+
+    function runCanvasAction(action) {
+      if (action === 'research') {
+        unlockAsset('research', 'avatar', 'He detectado 3 tipos de clientes para ti. Arrastra uno al centro para elegirlo.');
+        renderAvatarCards();
+      } else if (action === 'book') {
+        unlockAsset('book', 'book', 'Aqui tienes el esqueleto del libro. Puedes arrastrar capitulos para reordenar.');
+        renderBookOutline();
+      } else if (action === 'landing') {
+        unlockAsset('landing', 'landing', 'Landing materializada. Haz clic en el titulo para ajustarlo con IA.');
+      } else if (action === 'ads') {
+        unlockAsset('ads', 'landing', 'Tus assets de Ads ya estan en inventario para activar distribucion.');
+      }
+    }
+
+    chatForm.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const text = chatInput.value.trim();
+      if (!text) return;
+      appendChat('user', text);
+      const low = text.toLowerCase();
+      if (low.includes('avatar') || low.includes('cliente') || low.includes('investig')) {
+        runCanvasAction('research');
+      } else if (low.includes('libro') || low.includes('indice') || low.includes('capitulo')) {
+        runCanvasAction('book');
+      } else if (low.includes('landing') || low.includes('titulo') || low.includes('oferta')) {
+        runCanvasAction('landing');
+      } else if (low.includes('ads') || low.includes('anuncio')) {
+        runCanvasAction('ads');
+      } else {
+        appendChat('ai', 'Entendido. Puedo investigar avatar, crear libro, generar landing o preparar ads.');
+      }
+      chatInput.value = '';
+    });
+
+    document.querySelectorAll('.canvas-action').forEach((btn) => {
+      btn.addEventListener('click', () => runCanvasAction(btn.dataset.action));
+    });
+
+    inventory.querySelectorAll('.inventory-dot').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const asset = btn.dataset.asset;
+        if (!unlockedAssets[asset]) {
+          appendChat('ai', 'Ese activo aun esta bloqueado. Pidemelo por chat para crearlo.');
+          return;
+        }
+        showStage(btn.dataset.stage);
+      });
+    });
+
+    syncInventory();
+    if (unlockedAssets.book) renderBookOutline();
+    if (unlockedAssets.research) renderAvatarCards();
+    initLandingEditor();
+    showStage('default');
+  })();
+
+  // Guided Journey state
   const stepLabels = {{ step_labels_json|safe }};
+  const stepState = {
+    niche: {{ has_niche|yesno:"true,false" }},
+    offer: {{ has_offer|yesno:"true,false" }},
+    revenue: {{ has_revenue|yesno:"true,false" }},
+    outline: {{ has_outline|yesno:"true,false" }},
+    copy: {{ has_copy|yesno:"true,false" }},
+    book: false,
+  };
+
+  // ── Manual de Vuelo: descripción completa de cada uno de los 16 pasos ─────
+  const STEP_TOOLTIPS = {
+    niche:    t('manual.1'),
+    offer:    t('manual.2'),
+    avatars:  t('manual.3'),
+    angles:   t('manual.4'),
+    identity: t('manual.5'),
+    mockups:  t('manual.6'),
+    ads:      t('manual.7'),
+    landing:  t('manual.8'),
+    copy:     t('manual.9'),
+    scripts:  t('manual.10'),
+    ugc:      t('manual.11'),
+    book:     t('manual.12'),
+    upsells:  t('manual.13'),
+    email:    t('manual.14'),
+    export:   t('manual.15'),
+    campus:   t('manual.16'),
+    // Legacy aliases
+    outline:  t('card.outline.hint'),
+    revenue:  t('card.revenue.hint'),
+  };
+
+  const JOURNEY_CARDS = [
+    { id: 'card-niche',  key: 'niche',   step: 1,  requires: null },
+    { id: 'card-offer',  key: 'offer',   step: 2,  requires: 'niche' },
+    { id: 'card-outline',key: 'outline', step: 3,  requires: 'offer' },
+    { id: 'card-revenue',key: 'revenue', step: 4,  requires: 'offer' },
+    { id: 'card-copy',   key: 'copy',    step: 5,  requires: 'outline' },
+    { id: 'card-book',   key: 'book',    step: 12, requires: 'copy' },
+  ];
+
+  const projectRootEl = document.getElementById('project-app');
+  const projectId = Number(projectRootEl?.dataset?.projectId || 0);
+  const bigbangScreen = document.getElementById('bigbang-screen');
+  const bigbangForm = document.getElementById('bigbang-form');
+  const bigbangInput = document.getElementById('bigbang-input');
+  const panicResetBtn = document.getElementById('panic-reset-btn');
+  const globalProgressLine = document.getElementById('global-progress-line');
+  const floatingNextBtn = document.getElementById('floating-next-btn');
+  const referenceText = document.getElementById('step-reference-text');
+  const journeyCenter = document.getElementById('guided-journey-center');
+  const factoryUrl = "{% url 'core:project_factory' project.pk %}";
+
+  function refreshGlobalProgress() {
+    if (!globalProgressLine) return;
+    const checks = Array.from(document.querySelectorAll('.zen-state-pill')).filter((pill) =>
+      (pill.textContent || '').trim().toLowerCase() === 'completed'
+    ).length;
+    const total = JOURNEY_CARDS.length;
+    const pct = Math.min(100, Math.round((checks / total) * 100));
+    globalProgressLine.style.width = `${pct}%`;
+  }
+
+  function setAccordionOpen(cardId) {
+    document.querySelectorAll('.accordion-step').forEach((card) => {
+      const body = card.querySelector(':scope > .p-5:not(.border-b)');
+      if (!body) return;
+      const isTarget = card.id === cardId;
+      card.classList.toggle('is-open', isTarget);
+      body.classList.toggle('accordion-body-collapsed', !isTarget);
+    });
+  }
+
+  function getUnlockedCards() {
+    return JOURNEY_CARDS.filter((card) => !card.requires || stepState[card.requires]);
+  }
+
+  function showStepTooltip(cardKey, cardId) {
+    const seenKey = `magicbook_step_tip_${projectId}_${cardKey}`;
+    if (localStorage.getItem(seenKey) === '1') return;
+    const card = document.getElementById(cardId);
+    const header = card?.querySelector(':scope > .border-b');
+    if (!card || !header) return;
+    const tip = document.createElement('div');
+    tip.className = 'step-tooltip';
+    tip.textContent = STEP_TOOLTIPS[cardKey] || t('ui.complete_to_advance');
+    card.style.position = 'relative';
+    card.appendChild(tip);
+    window.setTimeout(() => tip.remove(), 4400);
+    localStorage.setItem(seenKey, '1');
+  }
+
+  function updateReferenceRail(activeCard) {
+    if (!referenceText) return;
+    const idx = JOURNEY_CARDS.findIndex((item) => item.id === activeCard?.id);
+    if (idx <= 0) {
+      referenceText.textContent = 'Vamos a construir la base. Aún no hay decisiones previas para referenciar.';
+      return;
+    }
+    const prev = JOURNEY_CARDS[idx - 1];
+    const done = !!stepState[prev.key];
+    if (done) {
+      const title = document.querySelector(`#${prev.id} h2`)?.textContent?.trim() || prev.key;
+      referenceText.textContent = `Referencia rápida: ${title} ya quedó guardado. Usa esa decisión como criterio de coherencia en este paso.`;
+    } else {
+      referenceText.textContent = 'Todavía no hay referencia previa guardada para este módulo.';
+    }
+  }
+
+  function updateFloatingNext(activeCardId) {
+    if (!floatingNextBtn) return;
+    const current = JOURNEY_CARDS.find((item) => item.id === activeCardId);
+    if (!current) {
+      floatingNextBtn.disabled = true;
+      return;
+    }
+    const currentDone = !!stepState[current.key];
+    const unlocked = getUnlockedCards();
+    const currentIdx = unlocked.findIndex((item) => item.id === current.id);
+    const next = currentIdx >= 0 ? unlocked[currentIdx + 1] : null;
+
+    if (!currentDone || !next) {
+      floatingNextBtn.disabled = true;
+      floatingNextBtn.textContent = next ? t('ui.complete_to_advance') : t('ui.route_complete');
+      return;
+    }
+    floatingNextBtn.disabled = false;
+    floatingNextBtn.textContent = `Siguiente Paso: ${next.step} →`;
+    floatingNextBtn.dataset.nextCard = next.id;
+  }
+
+  function setActiveMissionStep(cardId) {
+    const found = JOURNEY_CARDS.find((item) => item.id === cardId);
+    if (!found) return;
+    document.querySelectorAll('.mission-step').forEach((item) => {
+      const mapStep = Number(item.dataset.mapStep || 0);
+      item.classList.toggle('is-active', mapStep === found.step);
+    });
+  }
+
+  function openJourneyCard(cardId, fromNextButton=false) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    setAccordionOpen(cardId);
+    setActiveMissionStep(cardId);
+    localStorage.setItem(`magicbook_active_card_${projectId}`, cardId);
+    updateFloatingNext(cardId);
+    updateReferenceRail(card);
+    const cardMeta = JOURNEY_CARDS.find((item) => item.id === cardId);
+    if (cardMeta) showStepTooltip(cardMeta.key, cardMeta.id);
+    if (fromNextButton && journeyCenter) {
+      journeyCenter.classList.remove('journey-flight');
+      void journeyCenter.offsetWidth;
+      journeyCenter.classList.add('journey-flight');
+      window.setTimeout(() => journeyCenter.classList.remove('journey-flight'), 520);
+    }
+  }
+
+  function initSequentialAccordion() {
+    const unlockedIds = new Set(getUnlockedCards().map((item) => item.id));
+    let activeId = localStorage.getItem(`magicbook_active_card_${projectId}`);
+    if (!activeId || !unlockedIds.has(activeId)) {
+      activeId = getUnlockedCards().find((item) => !stepState[item.key])?.id || getUnlockedCards()[0]?.id || 'card-niche';
+    }
+
+    JOURNEY_CARDS.forEach((item) => {
+      const card = document.getElementById(item.id);
+      if (!card) return;
+      const isUnlocked = unlockedIds.has(item.id);
+      card.classList.toggle('step-locked', !isUnlocked);
+
+      const header = card.querySelector('.border-b');
+      const isDone = !!stepState[item.key];
+      const currentState = isDone ? t('ui.completed_pill') : (item.id === activeId ? t('ui.processing_pill') : t('ui.pending_pill'));
+      if (header) {
+        let pill = header.querySelector('.zen-state-pill');
+        if (!pill) {
+          pill = document.createElement('span');
+          pill.className = 'zen-state-pill text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border border-zinc-700 text-zinc-400';
+          header.appendChild(pill);
+        }
+        pill.textContent = currentState;
+        if (isDone) {
+          pill.className = 'zen-state-pill text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border border-emerald-700 text-emerald-300 bg-emerald-900/20';
+        } else if (item.id === activeId) {
+          pill.className = 'zen-state-pill text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border border-indigo-700 text-indigo-300 bg-indigo-900/20';
+        } else {
+          pill.className = 'zen-state-pill text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border border-zinc-700 text-zinc-500';
+        }
+      }
+      if (header && isUnlocked) {
+        header.classList.add('cursor-pointer');
+        header.addEventListener('click', () => openJourneyCard(item.id));
+      }
+    });
+
+    document.querySelectorAll('.mission-nav-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const go = Number(btn.dataset.goStep || 0);
+        const target = JOURNEY_CARDS.find((item) => item.step === go);
+        if (target) {
+          openJourneyCard(target.id);
+          return;
+        }
+        // Steps > 12 go to factory page; steps 6-11 and 13-16 redirect too
+        if (go > 5 && go !== 12) {
+          window.location.href = factoryUrl;
+        }
+      });
+    });
+
+    if (floatingNextBtn) {
+      floatingNextBtn.addEventListener('click', () => {
+        const nextCard = floatingNextBtn.dataset.nextCard;
+        if (!nextCard) return;
+        openJourneyCard(nextCard, true);
+      });
+    }
+
+    openJourneyCard(activeId);
+    refreshGlobalProgress();
+  }
+
+  if (bigbangForm && bigbangInput) {
+    const viewedKey = `magicbook_bigbang_seen_${projectId}`;
+    if (localStorage.getItem(viewedKey) === '1' && !{{ has_niche|yesno:"true,false" }}) {
+      bigbangScreen?.classList.add('hidden');
+    }
+
+    bigbangForm.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const seed = (bigbangInput.value || '').trim();
+      if (!seed) return;
+      localStorage.setItem(viewedKey, '1');
+      localStorage.setItem('magicbook_seed_idea', seed);
+      const title = document.querySelector('h1.text-2xl.font-extrabold.text-gray-100');
+      if (title && !title.textContent.trim()) {
+        title.textContent = seed;
+      }
+      const promptField = document.getElementById('lab-prompt-input');
+      if (promptField) {
+        promptField.value = `Proyecto base: ${seed}`;
+      }
+      bigbangScreen.style.transition = 'opacity .45s ease';
+      bigbangScreen.style.opacity = '0';
+      window.setTimeout(() => bigbangScreen.classList.add('hidden'), 460);
+      openJourneyCard('card-niche');
+    });
+  }
+
+  if (panicResetBtn) {
+    panicResetBtn.addEventListener('click', async () => {
+      const openCard = document.querySelector('.accordion-step.is-open');
+      if (!openCard) return;
+      const key = openCard.dataset.stepKey;
+      const actionMap = {
+        niche: ['niche', 'Reanalizar este paso desde cero?'],
+        offer: ['offer', 'Regenerar oferta y descartar el resultado actual?'],
+        outline: ['outline', 'Regenerar indice y reemplazar el actual?'],
+        revenue: ['revenue', 'Regenerar estrategia de revenue?'],
+        copy: ['copy', 'Regenerar biblioteca de copies?'],
+      };
+      const cfg = actionMap[key];
+      if (!cfg) return;
+      if (!window.confirm(cfg[1])) return;
+      if (!projectId) return;
+      generateModule(cfg[0], projectId);
+    });
+  }
+
+  initSequentialAccordion();
+
+  // ── Manual de Vuelo: populate sidebar step tooltips ─────────────────────────────
+  const MANUAL_VUELO = {};
+  for (let _i = 1; _i <= 16; _i++) MANUAL_VUELO[_i] = t('manual.' + _i);
+  document.querySelectorAll('[data-step-tip]').forEach((tip) => {
+    const step = Number(tip.dataset.stepTip);
+    if (MANUAL_VUELO[step]) tip.textContent = MANUAL_VUELO[step];
+  });
+
+  // ── Shared CSRF helper ───────────────────────────────────────
+  function getCsrfToken() {
+    return (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+  }
+
+  // ── Step 12: Fábrica de Libros — Book Editor Logic ────────────
+  (function initBookEditor() {
+    const bookLoadUrl    = "{% url 'core:book_content_load' project.pk %}";
+    const bookSaveUrl    = "{% url 'core:book_content_save' project.pk %}";
+    const bookEnhanceUrl = "{% url 'core:book_content_enhance' project.pk %}";
+    const writeChapterUrl = (num) => `/dashboard/api/write/chapter/{{ project.pk }}/${num}/`;
+
+    const zenEditor      = document.getElementById('book-zen-editor');
+    const aiToolbar      = document.getElementById('book-ai-toolbar');
+    const wordBar        = document.getElementById('book-word-bar');
+    const wordLabel      = document.getElementById('book-word-count-label');
+    const totalBadge     = document.getElementById('book-total-words-badge');
+    const chapterLabel   = document.getElementById('book-active-chapter-label');
+    const chapterTitle   = document.getElementById('book-active-chapter-title');
+    const chapterWC      = document.getElementById('book-chapter-wc');
+    const writeBtn       = document.getElementById('book-write-btn');
+    const saveBtn        = document.getElementById('book-save-btn');
+    const reviewedWrap   = document.getElementById('book-reviewed-wrap');
+    const reviewedChk    = document.getElementById('book-reviewed-chk');
+    const WORD_GOAL      = 15000;
+    const WORD_MAX       = 25000;
+
+    let activeChapter    = null; // { chapter_number, chapter_title }
+    let chapterData      = {};   // { [chapterNum]: { content, word_count, is_reviewed } }
+    let totalWords       = 0;
+    let saveTimer        = null;
+
+    function updateWordBar(total) {
+      totalWords = total;
+      const pct = Math.min(100, Math.round((total / WORD_GOAL) * 100));
+      if (wordBar) wordBar.style.width = pct + '%';
+      const _wu = window.UI_LANG === 'en' ? 'words' : (window.UI_LANG === 'pt' ? 'palavras' : 'palabras');
+      if (wordLabel) wordLabel.textContent = `${total.toLocaleString()} / ${WORD_GOAL.toLocaleString()} ${_wu}`;
+      if (totalBadge) {
+        totalBadge.textContent = t('book.total_words', { n: total.toLocaleString() });
+        totalBadge.classList.toggle('hidden', total === 0);
+      }
+    }
+
+    function updateChapterStatus(chNum, status) {
+      const statusEl = document.querySelector(`.book-ch-status-${chNum}`);
+      const numEl    = document.querySelector(`.book-ch-num-${chNum}`);
+      if (!statusEl) return;
+      const MAP = {
+        pending:   { key: 'ch.pending',  cls: 'text-zinc-500' },
+        writing:   { key: 'ch.writing',  cls: 'text-amber-400 animate-pulse' },
+        done:      { key: 'ch.done',     cls: 'text-emerald-400' },
+        reviewed:  { key: 'ch.reviewed', cls: 'text-emerald-300 font-semibold' },
+      };
+      const info = MAP[status] || MAP.pending;
+      statusEl.textContent = t(info.key);
+      statusEl.className = `book-ch-status-${chNum} text-[10px] mt-0.5 block ${info.cls}`;
+      if (numEl && status === 'done') numEl.classList.add('bg-amber-700/60', 'text-amber-200');
+      if (numEl && status === 'reviewed') numEl.classList.add('bg-emerald-700/60', 'text-emerald-200');
+    }
+
+    async function loadChapters() {
+      try {
+        const res = await fetch(bookLoadUrl);
+        const data = await res.json();
+        if (!data.success) return;
+        data.chapters.forEach((ch) => {
+          chapterData[ch.chapter_number] = { content: ch.content, word_count: ch.word_count, is_reviewed: ch.is_reviewed };
+          const status = ch.is_reviewed ? 'reviewed' : (ch.word_count > 0 ? 'done' : 'pending');
+          updateChapterStatus(ch.chapter_number, status);
+        });
+        updateWordBar(data.total_words);
+      } catch (_) {}
+    }
+
+    function openChapter(chNum, chTitleText) {
+      activeChapter = { chapter_number: chNum, chapter_title: chTitleText };
+
+      // Highlight active in index
+      document.querySelectorAll('.book-chapter-btn').forEach((btn) => {
+        btn.classList.toggle('bg-amber-900/30', Number(btn.dataset.chapter) === chNum);
+        btn.classList.toggle('border-l-2', Number(btn.dataset.chapter) === chNum);
+        btn.classList.toggle('border-amber-500', Number(btn.dataset.chapter) === chNum);
+      });
+
+      if (chapterLabel) chapterLabel.textContent = `Capítulo ${chNum}`;
+      if (chapterTitle) chapterTitle.textContent = chTitleText;
+
+      const saved = chapterData[chNum];
+      if (zenEditor) {
+        zenEditor.disabled = false;
+        zenEditor.value = saved?.content || '';
+      }
+      if (writeBtn) writeBtn.classList.remove('hidden');
+      if (saveBtn) saveBtn.classList.remove('hidden');
+      if (reviewedWrap) reviewedWrap.classList.remove('hidden'); reviewedWrap?.classList.add('flex');
+      if (reviewedChk) reviewedChk.checked = saved?.is_reviewed || false;
+
+      const wc = saved?.word_count || 0;
+      if (chapterWC) chapterWC.textContent = wc > 0 ? t('book.total_words', { n: wc.toLocaleString() }) : '';
+      updateChapterStatus(chNum, saved?.is_reviewed ? 'reviewed' : (wc > 0 ? 'done' : 'pending'));
+    }
+
+    const MIN_WORDS     = 800;
+    const lengthWarning  = document.getElementById('book-length-warning');
+    const lengthDetail   = document.getElementById('book-length-warning-detail');
+
+    function currentWordCount() {
+      if (!zenEditor) return 0;
+      return zenEditor.value.trim().split(/\s+/).filter(Boolean).length;
+    }
+
+    function showLengthWarning(wc) {
+      if (!lengthWarning || !lengthDetail) return;
+      lengthDetail.textContent = t('val.short_detail', { wc: wc });
+      lengthWarning.classList.remove('hidden');
+      lengthWarning.classList.add('flex');
+    }
+
+    function hideLengthWarning() {
+      lengthWarning?.classList.add('hidden');
+      lengthWarning?.classList.remove('flex');
+    }
+
+    // Called when checkbox changes — intercepts before saving
+    window.bookToggleReviewed = function () {
+      if (!reviewedChk) return;
+      if (reviewedChk.checked) {
+        const wc = currentWordCount();
+        if (wc < MIN_WORDS) {
+          reviewedChk.checked = false;   // revert
+          showLengthWarning(wc);
+          return;
+        }
+      }
+      hideLengthWarning();
+      bookSaveActiveChapter();
+    };
+
+    window.bookOnEditorInput = function () {
+      if (!activeChapter || !zenEditor) return;
+      const words = currentWordCount();
+      if (chapterWC) chapterWC.textContent = words > 0 ? t('book.total_words', { n: words.toLocaleString() }) : '';
+      // If warning is visible, dismiss it once we cross the threshold
+      if (words >= MIN_WORDS) hideLengthWarning();
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => bookSaveActiveChapter(), 2000); // autosave after 2s idle
+    };
+
+    window.bookSaveActiveChapter = async function () {
+      if (!activeChapter || !zenEditor) return;
+      const content = zenEditor.value;
+      const wc = currentWordCount();
+      let is_reviewed = reviewedChk?.checked || false;
+      // Hard-block: cannot mark reviewed if below minimum
+      if (is_reviewed && wc < MIN_WORDS) {
+        if (reviewedChk) reviewedChk.checked = false;
+        is_reviewed = false;
+        showLengthWarning(wc);
+      }
+      try {
+        const res = await fetch(bookSaveUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+          body: JSON.stringify({
+            chapter_number: activeChapter.chapter_number,
+            chapter_title:  activeChapter.chapter_title,
+            content,
+            is_reviewed,
+          }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          chapterData[activeChapter.chapter_number] = { content, word_count: data.word_count, is_reviewed };
+          if (chapterWC) chapterWC.textContent = t('book.total_words', { n: data.word_count.toLocaleString() });
+          updateWordBar(data.total_words);
+          updateChapterStatus(activeChapter.chapter_number, is_reviewed ? 'reviewed' : (data.word_count > 0 ? 'done' : 'pending'));
+          if (saveBtn) { saveBtn.textContent = '✓ Guardado'; setTimeout(() => { saveBtn.textContent = '💾 Guardar'; }, 1200); }
+        }
+      } catch (_) {}
+    };
+
+    window.bookWriteActiveChapter = async function () {
+      if (!activeChapter || !zenEditor || !writeBtn) return;
+      writeBtn.disabled = true;
+      writeBtn.textContent = t('book.writing');
+      updateChapterStatus(activeChapter.chapter_number, 'writing');
+
+      try {
+        const res = await fetch(writeChapterUrl(activeChapter.chapter_number), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+          body: JSON.stringify({ chapter_num: activeChapter.chapter_number }),
+        });
+        const data = await res.json();
+        if (data.success && data.content) {
+          zenEditor.value = data.content;
+          // auto-save immediately
+          chapterData[activeChapter.chapter_number] = { content: data.content, word_count: data.word_count || 0, is_reviewed: false };
+          if (chapterWC) chapterWC.textContent = t('book.total_words', { n: (data.word_count || 0).toLocaleString() });
+          updateChapterStatus(activeChapter.chapter_number, 'done');
+          await bookSaveActiveChapter();
+        } else {
+          updateChapterStatus(activeChapter.chapter_number, 'pending');
+        }
+      } catch (_) {
+        updateChapterStatus(activeChapter.chapter_number, 'pending');
+      } finally {
+        writeBtn.disabled = false;
+        writeBtn.textContent = t('book.write_btn');
+      }
+    };
+
+    window.bookShowToolbar = function () { aiToolbar?.classList.remove('hidden'); };
+    window.bookHideToolbar = function () { aiToolbar?.classList.add('hidden'); };
+
+    // AI enhance on toolbar button click
+    document.querySelectorAll('.book-enhance-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!zenEditor) return;
+        const selectedText = zenEditor.value.substring(zenEditor.selectionStart, zenEditor.selectionEnd).trim();
+        if (!selectedText) {
+          alert('Selecciona un fragmento de texto en el editor primero.');
+          return;
+        }
+        const action = btn.dataset.action;
+        const origText = btn.textContent;
+        btn.textContent = '…';
+        btn.disabled = true;
+        try {
+          const res = await fetch(bookEnhanceUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            body: JSON.stringify({ selected_text: selectedText, action }),
+          });
+          const data = await res.json();
+          if (data.success && data.enhanced_text) {
+            const start  = zenEditor.selectionStart;
+            const end    = zenEditor.selectionEnd;
+            const before = zenEditor.value.substring(0, start);
+            const after  = zenEditor.value.substring(end);
+            zenEditor.value = before + data.enhanced_text + after;
+            zenEditor.setSelectionRange(start, start + data.enhanced_text.length);
+            bookOnEditorInput();
+          }
+        } catch (_) {}
+        finally {
+          btn.textContent = origText;
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // Chapter index click
+    document.querySelectorAll('.book-chapter-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        openChapter(Number(btn.dataset.chapter), btn.dataset.title);
+      });
+    });
+
+    // Load existing content on init
+    loadChapters();
+  })();
 
   // ── The Lab Split View ────────────────────────────────────────
   const labInputTab = document.getElementById('lab-tab-input');
@@ -1212,11 +2710,99 @@
   });
   let totalChapters = document.querySelectorAll('.chapter-row').length;
   let writtenCount  = {{ written_count }};
+  let focusChapterNum = null;
+
+  const focusMode = document.getElementById('focus-mode');
+  const focusTitle = document.getElementById('focus-title');
+  const focusEditor = document.getElementById('focus-editor');
+  const focusStatus = document.getElementById('focus-status');
+  const focusClose = document.getElementById('focus-close');
+  const focusDone = document.getElementById('focus-done');
 
   function updateBadge() {
     const badge = document.getElementById('chapters-written-badge');
     if (badge) badge.textContent = `${writtenCount} / ${totalChapters} escritos`;
   }
+
+  function openFocusMode(chapterNum) {
+    const row = document.getElementById(`chapter-row-${chapterNum}`);
+    if (!row) return;
+    const content = row.dataset.content || '';
+    if (!content) {
+      alert('Primero escribe este capítulo para entrar en Focus Mode.');
+      return;
+    }
+    focusChapterNum = Number(chapterNum);
+    focusTitle.textContent = `Capítulo ${chapterNum}: ${row.dataset.title || ''}`;
+    focusEditor.value = content;
+    focusStatus.textContent = 'Enfoque total activo.';
+    focusMode.dataset.state = 'open';
+  }
+
+  function closeFocusMode() {
+    focusMode.dataset.state = 'closed';
+    focusChapterNum = null;
+  }
+
+  async function runFocusCommand(command) {
+    if (!projectId || !focusChapterNum) return;
+
+    const payload = {
+      chapter_num: focusChapterNum,
+      scope: 'full',
+      tone: 'mas claro y directo',
+      shorten_percent: 0,
+    };
+
+    if (command === 'shorter') {
+      payload.shorten_percent = 25;
+      payload.tone = 'mas conciso y accionable';
+    } else if (command === 'tone') {
+      const customTone = window.prompt('Nuevo tono para este capítulo:', 'mas humano y conversacional');
+      if (!customTone) return;
+      payload.tone = customTone;
+    } else if (command === 'example') {
+      payload.tone = 'mantiene el tono actual pero agrega ejemplos practicos y concretos';
+    }
+
+    focusStatus.textContent = 'MagicBook esta transformando el capítulo...';
+    try {
+      const resp = await fetch(`/dashboard/api/rewrite/chapter/${projectId}/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!data.success) {
+        throw new Error(data.error || 'No se pudo aplicar el comando.');
+      }
+
+      focusEditor.value = data.rewritten || focusEditor.value;
+      const row = document.getElementById(`chapter-row-${focusChapterNum}`);
+      if (row) {
+        row.dataset.content = focusEditor.value;
+      }
+      const wcBadge = document.getElementById(`wc-badge-${focusChapterNum}`);
+      if (wcBadge && data.word_count) {
+        wcBadge.textContent = `${data.word_count} palabras`;
+        wcBadge.classList.remove('hidden');
+      }
+      const undoBtn = document.getElementById(`undo-btn-${focusChapterNum}`);
+      if (undoBtn) undoBtn.classList.remove('hidden');
+      focusStatus.textContent = 'Comando aplicado. Puedes seguir refinando.';
+    } catch (err) {
+      focusStatus.textContent = `Error: ${err.message}`;
+    }
+  }
+
+  document.querySelectorAll('.focus-open-btn').forEach((btn) => {
+    btn.addEventListener('click', () => openFocusMode(btn.dataset.chapter));
+  });
+  document.querySelectorAll('.focus-command').forEach((btn) => {
+    btn.addEventListener('click', () => runFocusCommand(btn.dataset.cmd));
+  });
+  if (focusClose) focusClose.addEventListener('click', closeFocusMode);
+  if (focusDone) focusDone.addEventListener('click', closeFocusMode);
 
   async function writeChapter(projectPk, chapterNum, btn) {
     const row       = document.getElementById(`chapter-row-${chapterNum}`);
@@ -1247,6 +2833,7 @@
           wcBadge.textContent = `${data.word_count} palabras`;
           wcBadge.classList.remove('hidden');
         }
+        row.dataset.content = data.content || row.dataset.content || '';
 
         // Update written count if new
         if (writtenCount < totalChapters) { writtenCount++; }
@@ -1327,6 +2914,10 @@
           .filter(Boolean)
           .map((block) => `<p class="mb-3">${block.replace(/\n/g, '<br>')}</p>`)
           .join('');
+      }
+      const row = document.getElementById(`chapter-row-${chapterNum}`);
+      if (row) {
+        row.dataset.content = data.restored || row.dataset.content || '';
       }
 
       if (!data.can_undo_again) {

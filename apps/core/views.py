@@ -9,7 +9,7 @@ from django.views.generic import View, ListView, DetailView, CreateView
 from django.http import JsonResponse, HttpResponse, StreamingHttpResponse
 from django.contrib import messages
 
-from .models import Project, NicheAnalysis, OfferStructure, RevenueStrategy, ProductOutline, CopyLibrary, ChapterContent, UserResource, ProjectArtifact, TestRun, PlanAEnrollment, AvatarProfile, ChapterRewriteHistory
+from .models import Project, NicheAnalysis, OfferStructure, RevenueStrategy, ProductOutline, CopyLibrary, ChapterContent, UserResource, ProjectArtifact, TestRun, PlanAEnrollment, AvatarProfile, ChapterRewriteHistory, WorkflowProject, ProjectStep, BookChapter, BookContent
 from .forms import ProjectCreateForm
 from .services.ai_service import AIService
 
@@ -50,6 +50,69 @@ PLAN_A_FEATURES = [
     {'key': 'multi_market', 'label': 'Multi-mercado: AR, MX, CO, CL, UY, BR, ES + más'},
     {'key': 'offer_visual_model', 'label': 'Modelado de oferta con IA visual'},
     {'key': 'visual_identity', 'label': 'Logo + identidad visual con IA generativa'},
+]
+
+DASHBOARD_PHASES = [
+    {
+        'title': 'Fase 1: Estrategia (ADN)',
+        'modules': [
+            {'icon': '🎯', 'name': 'Modelado de Oferta', 'desc': 'Define nicho, país y precio para obtener la Gran Promesa.'},
+            {'icon': '🔍', 'name': 'Investigación', 'desc': 'Detecta tendencias, competencia y oportunidades ignoradas.'},
+            {'icon': '👥', 'name': 'Avatares', 'desc': 'Genera 3 perfiles de cliente con miedos y deseos profundos.'},
+            {'icon': '⚔️', 'name': 'Ángulos de Venta', 'desc': 'Propone 5 enfoques de venta listos para testear.'},
+        ],
+    },
+    {
+        'title': 'Fase 2: Visual & Branding',
+        'modules': [
+            {'icon': '🎨', 'name': 'Identidad Visual', 'desc': 'Paleta HEX, tipografías y concepto de logo.'},
+            {'icon': '🖼️', 'name': 'Mockups Premium', 'desc': 'Visuales del producto en móvil, tablet o impreso.'},
+            {'icon': '📢', 'name': 'Generador de Ads', 'desc': 'Creativos publicitarios basados en ángulos de venta.'},
+        ],
+    },
+    {
+        'title': 'Fase 3: Embudo de Ventas',
+        'modules': [
+            {'icon': '🚀', 'name': 'Landing Page', 'desc': 'Genera y edita página de venta con preview.'},
+            {'icon': '✍️', 'name': 'Copys de Producto', 'desc': 'Textos persuasivos para checkout y página de pago.'},
+            {'icon': '🎬', 'name': 'Guiones de Video', 'desc': 'Scripts para VSL o reels de conversión.'},
+            {'icon': '📱', 'name': 'Prompts UGC', 'desc': 'Instrucciones para anuncios estilo creador.'},
+        ],
+    },
+    {
+        'title': 'Fase 4: The Factory',
+        'modules': [
+            {'icon': '📦', 'name': 'Infoproducto', 'desc': 'Redacción masiva de capítulos del e-book.'},
+            {'icon': '💰', 'name': 'Upsells + AOV', 'desc': 'Oferta complementaria para subir ticket.'},
+            {'icon': '📧', 'name': 'Email Marketing', 'desc': 'Secuencia de 7 correos para conversión.'},
+        ],
+    },
+    {
+        'title': 'Fase 5: Operaciones (Scale)',
+        'modules': [
+            {'icon': '🌎', 'name': 'Exportación', 'desc': 'Guía para ventas globales y operación internacional.'},
+            {'icon': '🏆', 'name': 'Campus VIP', 'desc': 'Comunidad y clases para escalar resultados.'},
+        ],
+    },
+]
+
+WORKFLOW_STEP_BLUEPRINT = [
+    (1, 'Modelado de Oferta'),
+    (2, 'Investigación'),
+    (3, 'Avatares'),
+    (4, 'Ángulos de Venta'),
+    (5, 'Identidad Visual'),
+    (6, 'Mockups Premium'),
+    (7, 'Generador de Ads'),
+    (8, 'Landing Page'),
+    (9, 'Copys de Producto'),
+    (10, 'Guiones de Video'),
+    (11, 'Prompts UGC'),
+    (12, 'Infoproducto'),
+    (13, 'Upsells + AOV'),
+    (14, 'Email Marketing'),
+    (15, 'Exportación'),
+    (16, 'Campus VIP'),
 ]
 
 
@@ -95,6 +158,188 @@ def _first_text(value):
             if text:
                 return text
     return ''
+
+
+def _find_first_image_url(value):
+    """Find first URL-like image from nested payload structures."""
+    if isinstance(value, str):
+        low = value.lower()
+        if low.startswith('http') and any(ext in low for ext in ('.png', '.jpg', '.jpeg', '.webp', '.gif')):
+            return value
+        return ''
+    if isinstance(value, list):
+        for item in value:
+            found = _find_first_image_url(item)
+            if found:
+                return found
+    if isinstance(value, dict):
+        for key in ('thumbnail', 'thumbnail_url', 'image', 'image_url', 'preview', 'preview_url', 'mockup_url', 'url'):
+            found = _find_first_image_url(value.get(key))
+            if found:
+                return found
+        for item in value.values():
+            found = _find_first_image_url(item)
+            if found:
+                return found
+    return ''
+
+
+def _artifact_payload(project, artifact_type):
+    art = project.artifacts.filter(artifact_type=artifact_type, status='done').first()
+    return art.payload if art else None
+
+
+def _ensure_workflow_project(project):
+    workflow_project, created = WorkflowProject.objects.get_or_create(
+        source_project=project,
+        defaults={
+            'user': project.user,
+            'title': project.title or project.niche_input[:90],
+            'niche': project.niche_input,
+            'target_country': project.primary_market,
+            'target_audience': '',
+            'status': 'active' if project.status != 'complete' else 'completed',
+            'progress_percentage': 0,
+        },
+    )
+    if not created:
+        changed = False
+        new_title = project.title or project.niche_input[:90]
+        if workflow_project.title != new_title:
+            workflow_project.title = new_title
+            changed = True
+        if workflow_project.niche != project.niche_input:
+            workflow_project.niche = project.niche_input
+            changed = True
+        if workflow_project.target_country != project.primary_market:
+            workflow_project.target_country = project.primary_market
+            changed = True
+        expected_status = 'completed' if project.status == 'complete' else 'active'
+        if workflow_project.status != expected_status:
+            workflow_project.status = expected_status
+            changed = True
+        if changed:
+            workflow_project.save(update_fields=['title', 'niche', 'target_country', 'status'])
+    return workflow_project
+
+
+def _step_content_snapshot(project, step_number):
+    niche = getattr(project, 'niche_analysis', None)
+    offer = getattr(project, 'offer_structure', None)
+    avatars = getattr(project, 'avatar_profile', None)
+    revenue = getattr(project, 'revenue_strategy', None)
+    outline = getattr(project, 'product_outline', None)
+    copy_lib = getattr(project, 'copy_library', None)
+
+    if step_number == 1 and offer:
+        return True, {
+            'product_name': offer.product_name,
+            'tagline': offer.tagline,
+            'price_points': offer.price_points,
+            'guarantee': offer.guarantee,
+        }
+    if step_number == 2 and niche:
+        return True, {
+            'avatar_name': niche.avatar_name,
+            'pains': niche.pains,
+            'desires': niche.desires,
+        }
+    if step_number == 3 and avatars and avatars.avatars:
+        return True, {'avatars': avatars.avatars, 'summary': avatars.buyer_persona_summary}
+    if step_number == 4:
+        payload = _artifact_payload(project, 'angles')
+        return (bool(payload), payload)
+    if step_number == 5:
+        payload = _artifact_payload(project, 'visual_identity')
+        return (bool(payload), payload)
+    if step_number == 6:
+        payload = _artifact_payload(project, 'mockups')
+        return (bool(payload), payload)
+    if step_number == 7:
+        payload = _artifact_payload(project, 'ads_generator')
+        return (bool(payload), payload)
+    if step_number == 8:
+        payload = _artifact_payload(project, 'landing_page')
+        return (bool(payload), payload)
+    if step_number == 9 and copy_lib:
+        return True, {
+            'headlines': copy_lib.headlines,
+            'hooks': copy_lib.hooks,
+            'cta_options': copy_lib.cta_options,
+        }
+    if step_number == 10:
+        payload = _artifact_payload(project, 'premium_scripts')
+        return (bool(payload), payload)
+    if step_number == 11:
+        payload = _artifact_payload(project, 'ugc_realistic')
+        return (bool(payload), payload)
+    if step_number == 12:
+        chapters = list(project.chapter_contents.filter(status='done').values(
+            'chapter_number', 'title', 'word_count', 'updated_at'
+        ))
+        if chapters:
+            return True, {'chapters': chapters, 'count': len(chapters)}
+        if outline:
+            return True, {'outline': outline.chapters}
+    if step_number == 13 and revenue:
+        return True, {'order_bump': revenue.order_bump, 'upsell': revenue.upsell}
+    if step_number == 14:
+        payload = _artifact_payload(project, 'email_marketing')
+        return (bool(payload), payload)
+    if step_number == 15:
+        payload = _artifact_payload(project, 'global_export')
+        return (bool(payload), payload)
+    if step_number == 16:
+        enrollment = getattr(project.user, 'plan_a_enrollment', None)
+        plan_b = getattr(project.user, 'plan_b_enrollment', None)
+        active = bool((enrollment and enrollment.status == 'active') or (plan_b and plan_b.status == 'active'))
+        return (active, {'membership': 'active' if active else 'pending'})
+    return False, None
+
+
+def _sync_workflow_from_project(project):
+    workflow_project = _ensure_workflow_project(project)
+
+    completed_count = 0
+    for step_number, step_name in WORKFLOW_STEP_BLUEPRINT:
+        is_completed, content = _step_content_snapshot(project, step_number)
+        if is_completed:
+            completed_count += 1
+        ProjectStep.objects.update_or_create(
+            project=workflow_project,
+            step_number=step_number,
+            defaults={
+                'step_name': step_name,
+                'content': content,
+                'is_completed': is_completed,
+            },
+        )
+
+    chapters = list(project.chapter_contents.all())
+    current_numbers = set()
+    for chapter in chapters:
+        current_numbers.add(chapter.chapter_number)
+        BookChapter.objects.update_or_create(
+            project=workflow_project,
+            chapter_number=chapter.chapter_number,
+            defaults={
+                'title': chapter.title,
+                'body_text': chapter.content,
+                'status': 'done' if chapter.status == 'done' else 'draft',
+            },
+        )
+
+    if current_numbers:
+        BookChapter.objects.filter(project=workflow_project).exclude(chapter_number__in=current_numbers).delete()
+
+    progress = int((completed_count / 16) * 100)
+    workflow_status = 'completed' if completed_count >= 16 else 'active'
+    if workflow_project.progress_percentage != progress or workflow_project.status != workflow_status:
+        workflow_project.progress_percentage = progress
+        workflow_project.status = workflow_status
+        workflow_project.save(update_fields=['progress_percentage', 'status'])
+
+    return workflow_project
 
 
 def _build_launch_map_nodes(project):
@@ -193,6 +438,23 @@ class DashboardView(LoginRequiredMixin, ListView):
             launch_map_nodes = _build_launch_map_nodes(project)
             project.launch_map_nodes = launch_map_nodes
             project.launch_done_count = sum(1 for node in launch_map_nodes if node['status'] == 'done')
+            project.launch_progress = int((project.launch_done_count / 16) * 100)
+            pending_labels = [node['label'] for node in launch_map_nodes if node['status'] != 'done']
+            if pending_labels:
+                preview = pending_labels[:2]
+                suffix = '...' if len(pending_labels) > 2 else ''
+                project.missing_hint = f"Falta {', '.join(preview)}{suffix}"
+            else:
+                project.missing_hint = 'Listo para lanzar'
+
+            thumbnail_url = ''
+            for artifact in project.artifacts.all():
+                if artifact.status != 'done':
+                    continue
+                thumbnail_url = _find_first_image_url(artifact.payload)
+                if thumbnail_url:
+                    break
+            project.thumbnail_url = thumbnail_url
 
         quickstart_steps = [
             {
@@ -242,6 +504,12 @@ class DashboardView(LoginRequiredMixin, ListView):
         ctx['quickstart_steps'] = quickstart_steps
         ctx['quickstart_done_count'] = sum(1 for item in quickstart_steps if item['done'])
         ctx['primary_cta'] = primary_cta
+        ctx['dashboard_stats'] = {
+            'active_projects': projects_qs.count(),
+            'infoproducts_generated': sum(1 for p in projects_qs if hasattr(p, 'product_outline')),
+            'launches_ready': sum(1 for p in projects_qs if getattr(p, 'launch_done_count', 0) >= 16),
+        }
+        ctx['dashboard_phases'] = DASHBOARD_PHASES
         return ctx
 
 
@@ -275,6 +543,7 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         project = self.object
+        _sync_workflow_from_project(project)
         has_niche = hasattr(project, 'niche_analysis')
         has_offer = hasattr(project, 'offer_structure')
         has_revenue = hasattr(project, 'revenue_strategy')
@@ -293,7 +562,12 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
             ch.chapter_number: ch.word_count
             for ch in project.chapter_contents.filter(status='done')
         }
+        chapter_contents = {
+            ch.chapter_number: ch.content
+            for ch in project.chapter_contents.filter(status='done')
+        }
         ctx['written_chapters'] = written_chapters
+        ctx['chapter_contents'] = chapter_contents
         ctx['written_count'] = len(written_chapters)
         undo_available_chapters = list(
             ChapterRewriteHistory.objects.filter(
@@ -504,6 +778,7 @@ class GenerateNicheView(LoginRequiredMixin, View):
 
             project.status = 'niche_done'
             project.save()
+            _sync_workflow_from_project(project)
 
             return JsonResponse({'success': True, 'progress': 25})
 
@@ -520,6 +795,32 @@ class GenerateFactoryArtifactView(LoginRequiredMixin, View):
         allowed = {f['key'] for f in FACTORY_15_FEATURES if f['source'] == 'artifact'}
         if artifact_type not in allowed:
             return JsonResponse({'success': False, 'error': 'Tipo de artefacto no permitido.'}, status=400)
+
+        artifact_step_map = {
+            'angles': 4,
+            'visual_identity': 5,
+            'mockups': 6,
+            'ads_generator': 7,
+            'landing_page': 8,
+            'product_copies': 9,
+            'ad_copies': 10,
+            'premium_scripts': 10,
+            'ugc_realistic': 11,
+            'email_marketing': 14,
+            'global_export': 15,
+        }
+        target_step = artifact_step_map.get(artifact_type)
+        if target_step:
+            for previous_step in range(1, target_step):
+                is_completed, _ = _step_content_snapshot(project, previous_step)
+                if not is_completed:
+                    return JsonResponse(
+                        {
+                            'success': False,
+                            'error': f'Paso bloqueado: completa el paso {previous_step} antes de generar este módulo.'
+                        },
+                        status=400,
+                    )
 
         try:
             service = AIService(
@@ -538,6 +839,7 @@ class GenerateFactoryArtifactView(LoginRequiredMixin, View):
                     'status': 'done',
                 }
             )
+            _sync_workflow_from_project(project)
 
             return JsonResponse({
                 'success': True,
@@ -634,6 +936,7 @@ class StartPlanATestRunView(LoginRequiredMixin, View):
             run.generated_count = generated
             run.finished_at = timezone.now()
             run.save(update_fields=['status', 'generated_count', 'finished_at'])
+            _sync_workflow_from_project(project)
             return JsonResponse({'success': True, 'generated_count': generated, 'run_id': run.pk})
 
         except Exception as exc:
@@ -685,6 +988,7 @@ class GenerateOfferView(LoginRequiredMixin, View):
 
             project.status = 'offer_done'
             project.save()
+            _sync_workflow_from_project(project)
 
             return JsonResponse({'success': True, 'progress': 50})
 
@@ -709,6 +1013,7 @@ class GenerateAvatarsView(LoginRequiredMixin, View):
                     'raw_response': data.get('raw_response', ''),
                 },
             )
+            _sync_workflow_from_project(project)
             return JsonResponse({
                 'success': True,
                 'avatars': data.get('avatars', []),
@@ -760,6 +1065,7 @@ class GenerateRevenueView(LoginRequiredMixin, View):
 
             project.status = 'revenue_done'
             project.save(update_fields=['status'])
+            _sync_workflow_from_project(project)
 
             return JsonResponse({'success': True, 'progress': 60})
 
@@ -801,6 +1107,7 @@ class GenerateOutlineView(LoginRequiredMixin, View):
 
             project.status = 'outline_done'
             project.save()
+            _sync_workflow_from_project(project)
 
             return JsonResponse({'success': True, 'progress': 75})
 
@@ -843,6 +1150,7 @@ class GenerateCopyView(LoginRequiredMixin, View):
 
             project.status = 'copy_done'
             project.save()
+            _sync_workflow_from_project(project)
 
             return JsonResponse({'success': True, 'progress': 100})
 
@@ -962,6 +1270,7 @@ class GenerateAllView(LoginRequiredMixin, View):
                 project.title = os_data['product_name']
             project.status = 'copy_done'
             project.save()
+            _sync_workflow_from_project(project)
 
             return JsonResponse({'success': True, 'progress': 100, 'mode': 'full'})
 
@@ -1040,6 +1349,7 @@ class WriteChapterView(LoginRequiredMixin, View):
                     'status': 'done',
                 },
             )
+            _sync_workflow_from_project(project)
 
             return JsonResponse({
                 'success': True,
@@ -1182,6 +1492,7 @@ class RewriteChapterView(LoginRequiredMixin, View):
                 chapter.content = final_content
                 chapter.word_count = len(final_content.split())
                 chapter.save(update_fields=['content', 'word_count', 'updated_at'])
+                _sync_workflow_from_project(project)
 
                 rewritten_items.append(
                     {
@@ -1248,6 +1559,7 @@ class UndoChapterRewriteView(LoginRequiredMixin, View):
         chapter.content = history_item.previous_content
         chapter.word_count = history_item.previous_word_count
         chapter.save(update_fields=['content', 'word_count', 'updated_at'])
+        _sync_workflow_from_project(project)
 
         history_item.undone_at = timezone.now()
         history_item.save(update_fields=['undone_at'])
@@ -1332,6 +1644,7 @@ class WriteAllChaptersView(LoginRequiredMixin, View):
                             'status':     'done',
                         },
                     )
+                    _sync_workflow_from_project(_project)
                     yield f"data: {json.dumps({'type': 'chapter_done', 'chapter': i, 'total': total, 'title': ch_data.get('title', ''), 'word_count': word_count})}\n\n"
 
                 except Exception as exc:
@@ -1343,6 +1656,7 @@ class WriteAllChaptersView(LoginRequiredMixin, View):
             )
             _project.status = 'complete'
             _project.save(update_fields=['status'])
+            _sync_workflow_from_project(_project)
 
             yield f"data: {json.dumps({'type': 'complete', 'total_words': total_words, 'chapters_written': _CC.objects.filter(project=_project, status='done').count()})}\n\n"
 
@@ -1515,3 +1829,135 @@ class DeleteResourceView(LoginRequiredMixin, View):
         )
         resource.delete()
         return JsonResponse({'success': True})
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Step 12: Fábrica de Libros — BookContent CRUD + AI enhance
+# ──────────────────────────────────────────────────────────────────────────────
+
+class BookContentLoadView(LoginRequiredMixin, View):
+    """
+    GET /api/book-content/<int:pk>/load/
+    Returns all BookContent rows for the project as JSON.
+    """
+
+    def get(self, request, pk):
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        chapters = list(
+            BookContent.objects.filter(project=project)
+            .values('chapter_number', 'chapter_title', 'content', 'word_count', 'is_reviewed')
+            .order_by('chapter_number')
+        )
+        total_words = sum(c['word_count'] for c in chapters)
+        return JsonResponse({'success': True, 'chapters': chapters, 'total_words': total_words})
+
+
+class BookContentSaveView(LoginRequiredMixin, View):
+    """
+    POST /api/book-content/<int:pk>/save/
+    Body JSON: { chapter_number, chapter_title, content, is_reviewed? }
+    Upserts a single BookContent row and recalculates word_count.
+    """
+
+    def post(self, request, pk):
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        try:
+            data = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)
+
+        chapter_number = data.get('chapter_number')
+        chapter_title = (data.get('chapter_title') or '').strip()
+        content = data.get('content', '')
+        is_reviewed = bool(data.get('is_reviewed', False))
+
+        if not chapter_number or not isinstance(chapter_number, int):
+            return JsonResponse({'success': False, 'error': 'chapter_number requerido'}, status=400)
+
+        word_count = len(content.split()) if content else 0
+
+        if is_reviewed and word_count < 800:
+            return JsonResponse(
+                {'success': False, 'error': f'El capítulo necesita mínimo 800 palabras para marcarse como revisado (tiene {word_count}).'},
+                status=400,
+            )
+
+        obj, _ = BookContent.objects.update_or_create(
+            project=project,
+            chapter_number=chapter_number,
+            defaults={
+                'chapter_title': chapter_title,
+                'content': content,
+                'word_count': word_count,
+                'is_reviewed': is_reviewed,
+            },
+        )
+
+        all_chapters = BookContent.objects.filter(project=project)
+        total_words = sum(c.word_count for c in all_chapters)
+
+        return JsonResponse({
+            'success': True,
+            'chapter_number': chapter_number,
+            'word_count': word_count,
+            'total_words': total_words,
+        })
+
+
+class BookContentEnhanceView(LoginRequiredMixin, View):
+    """
+    POST /api/book-content/<int:pk>/enhance/
+    Body JSON: { chapter_number, selected_text, action }
+    action: 'expand' | 'tone' | 'example'
+    Returns: { success, enhanced_text }
+    """
+
+    ACTION_PROMPTS = {
+        'expand': (
+            "Eres un editor experto en infoproductos digitales. "
+            "El usuario ha seleccionado el siguiente fragmento de su libro. "
+            "Expándelo con más detalle, ejemplos concretos y profundidad narrativa. "
+            "Mantén el mismo tono y estilo. Responde solo con el texto expandido.\n\n"
+            "FRAGMENTO:\n{text}"
+        ),
+        'tone': (
+            "Eres un editor experto. Reescribe el siguiente fragmento haciéndolo más dinámico, "
+            "conversacional y directo. Como si lo dijera un mentor que habla con su alumno. "
+            "Responde solo con el texto reescrito.\n\n"
+            "FRAGMENTO:\n{text}"
+        ),
+        'example': (
+            "Eres un escritor de infoproductos. Al siguiente fragmento, añade una analogía poderosa "
+            "o un caso de estudio real que ilustre el concepto. Intégralo de forma natural. "
+            "Responde solo con el fragmento enriquecido con el ejemplo.\n\n"
+            "FRAGMENTO:\n{text}"
+        ),
+    }
+
+    def post(self, request, pk):
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        try:
+            data = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({'success': False, 'error': 'JSON inválido'}, status=400)
+
+        selected_text = (data.get('selected_text') or '').strip()
+        action = data.get('action', 'expand')
+
+        if not selected_text:
+            return JsonResponse({'success': False, 'error': 'selected_text requerido'}, status=400)
+        if action not in self.ACTION_PROMPTS:
+            return JsonResponse({'success': False, 'error': 'action inválido'}, status=400)
+        if len(selected_text) > 4000:
+            return JsonResponse({'success': False, 'error': 'Fragmento demasiado largo (máx 4000 chars)'}, status=400)
+
+        prompt = self.ACTION_PROMPTS[action].format(text=selected_text)
+
+        try:
+            from .services import AIService
+            ai = AIService(project)
+            enhanced = ai.complete(prompt, max_tokens=1200)
+        except Exception as exc:
+            return JsonResponse({'success': False, 'error': str(exc)}, status=500)
+
+        return JsonResponse({'success': True, 'enhanced_text': enhanced})

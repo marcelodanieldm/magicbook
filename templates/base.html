@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" class="dark">
+<html lang="{{ ui_lang }}" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -50,6 +50,9 @@
       backdrop-filter: blur(10px);
     }
   </style>
+  {% load static %}
+  <script>window.UI_LANG = '{{ ui_lang|default:"es" }}';</script>
+  <script src="{% static 'js/i18n.js' %}"></script>
   {% block extra_head %}{% endblock %}
 </head>
 <body class="text-zinc-100 min-h-screen bg-zinc-950">
@@ -66,22 +69,22 @@
           <a href="{% url 'core:dashboard' %}" class="text-zinc-400 hover:text-zinc-100 text-sm transition-colors">Dashboard</a>
           <a href="{% url 'core:dashboard' %}" class="text-zinc-400 hover:text-zinc-100 text-sm transition-colors">The Lab</a>
           <a href="{% url 'core:dashboard' %}#vault" class="text-zinc-400 hover:text-zinc-100 text-sm transition-colors">The Vault</a>
-          <a href="{% url 'accounts:account_settings' %}" class="text-zinc-400 hover:text-zinc-100 text-sm transition-colors">Mi Cuenta</a>
+          <a href="{% url 'accounts:account_settings' %}" class="text-zinc-400 hover:text-zinc-100 text-sm transition-colors" data-i18n="nav.account">Mi Cuenta</a>
           <button type="button" id="magic-open"
                   class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:text-zinc-100 hover:border-zinc-500 text-xs transition-colors">
             Magic Bar
             <span class="text-[10px] text-zinc-500">Ctrl+K</span>
           </button>
-          <a href="{% url 'core:project_create' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-indigo-500/20 shadow-lg">
+          <a href="{% url 'core:project_create' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-indigo-500/20 shadow-lg" data-i18n="nav.new_project">
             + Nuevo Proyecto
           </a>
           <form method="post" action="{% url 'accounts:logout' %}" class="inline">
             {% csrf_token %}
-            <button type="submit" class="text-zinc-500 hover:text-zinc-300 text-sm transition-colors">Salir</button>
+            <button type="submit" class="text-zinc-500 hover:text-zinc-300 text-sm transition-colors" data-i18n="nav.logout">Salir</button>
           </form>
         {% else %}
-          <a href="{% url 'accounts:login' %}" class="text-zinc-400 hover:text-zinc-100 text-sm transition-colors">Iniciar Sesión</a>
-          <a href="{% url 'accounts:register' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-indigo-500/20 shadow-lg">
+          <a href="{% url 'accounts:login' %}" class="text-zinc-400 hover:text-zinc-100 text-sm transition-colors" data-i18n="nav.login">Iniciar Sesión</a>
+          <a href="{% url 'accounts:register' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-indigo-500/20 shadow-lg" data-i18n="nav.register">
             Empezar Gratis
           </a>
         {% endif %}
