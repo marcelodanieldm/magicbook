@@ -1,0 +1,1138 @@
+{% extends "base.html" %}
+{% load core_extras humanize %}
+{% block title %}{{ project.title|default:"Proyecto" }} · MagicBook{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8" id="project-app" data-project-id="{{ project.pk }}">
+
+  <!-- Back + Header -->
+  <div class="mb-6">
+    <a href="{% url 'core:dashboard' %}" class="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Mis Proyectos</a>
+  </div>
+  <div class="mb-4 flex justify-end">
+    <a href="{% url 'core:project_factory' project.pk %}"
+       class="text-xs bg-violet-700 hover:bg-violet-600 text-white font-semibold px-3 py-2 rounded-lg transition-colors">
+      ⚙️ Abrir Fábrica 15
+    </a>
+  </div>
+  <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-2xl font-extrabold text-gray-100">{{ project.title|default:"Proyecto sin título" }}</h1>
+      <p class="text-gray-500 text-sm mt-1 max-w-xl">{{ project.niche_input }}</p>
+    </div>
+    <div class="flex items-center gap-3 flex-shrink-0">
+      <div class="bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-center">
+        <div class="text-2xl font-extrabold gradient-text">{{ project.completion_percentage }}%</div>
+        <div class="text-gray-500 text-xs">completado</div>
+      </div>
+      {% if project.completion_percentage < 100 %}
+      <button onclick="generateAll({{ project.pk }})"
+              class="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 glow text-white font-bold px-5 py-3 rounded-xl transition-all text-sm flex items-center gap-2">
+        <span>⚡</span> Generar Todo
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  {% with steps_done=project.steps_completed %}
+  <div class="mb-8 overflow-x-auto">
+    <div class="min-w-max flex items-center">
+      {% for step in step_labels %}
+      <div class="flex flex-col items-center">
+        <div class="w-8 h-8 rounded-full border text-xs font-bold flex items-center justify-center
+          {% if forloop.counter <= steps_done %}border-violet-600 text-violet-300 bg-violet-900/30
+          {% elif forloop.counter == steps_done|add:1 %}border-violet-500 text-violet-400 bg-transparent
+          {% else %}border-gray-700 text-gray-600 bg-transparent{% endif %}">
+          {% if forloop.counter <= steps_done %}✓{% else %}{{ forloop.counter }}{% endif %}
+        </div>
+        <span class="text-xs mt-1 whitespace-nowrap
+          {% if forloop.counter <= steps_done %}text-violet-300
+          {% elif forloop.counter == steps_done|add:1 %}text-gray-300
+          {% else %}text-gray-600{% endif %}">
+          {{ step }}
+        </span>
+      </div>
+      {% if not forloop.last %}
+      <div class="h-px w-12 sm:w-20 mx-1 mb-4
+        {% if forloop.counter < steps_done %}bg-violet-600{% else %}bg-gray-700{% endif %}"></div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endwith %}
+
+  <!-- 4-column grid -->
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+    <!-- ══════════════════════════════════════
+         CARD 1: ANÁLISIS DE NICHO
+    ══════════════════════════════════════ -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-niche">
+      <div class="flex items-center justify-between p-5 border-b border-gray-800">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-violet-900/60 border border-violet-700/60 flex items-center justify-center">
+            <span class="text-lg">🎯</span>
+          </div>
+          <div>
+            <h2 class="font-bold text-gray-100">Análisis de Nicho</h2>
+            <p class="text-gray-500 text-xs">Avatar + Dolores + Deseos</p>
+          </div>
+        </div>
+        {% if has_niche %}
+          <span class="text-xs bg-green-900/40 border border-green-700/50 text-green-400 px-3 py-1 rounded-full font-medium">✓ Listo</span>
+        {% endif %}
+      </div>
+
+      <div class="p-5">
+        <!-- Skeleton -->
+        <div id="skeleton-niche" class="hidden space-y-3">
+          <div class="skeleton h-4 rounded w-3/4"></div>
+          <div class="skeleton h-4 rounded w-full"></div>
+          <div class="skeleton h-4 rounded w-5/6"></div>
+          <div class="skeleton h-4 rounded w-full"></div>
+          <div class="skeleton h-4 rounded w-2/3"></div>
+        </div>
+
+        <!-- Content -->
+        <div id="content-niche">
+          {% if has_niche %}
+            {% with n=project.niche_analysis %}
+            <div class="space-y-5">
+              <!-- Avatar -->
+              <div>
+                <p class="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-1">Avatar Ideal</p>
+                <p class="font-bold text-gray-100 text-lg">{{ n.avatar_name }}</p>
+              </div>
+              <!-- Personas -->
+              {% if n.buyer_personas %}
+              <div>
+                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">Buyer Personas</p>
+                <div class="space-y-2">
+                  {% for persona in n.buyer_personas %}
+                  <div class="bg-gray-800 rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="font-medium text-gray-200 text-sm">{{ persona.name }}</span>
+                      <span class="text-gray-500 text-xs">{{ persona.age }}</span>
+                    </div>
+                    <p class="text-gray-400 text-xs leading-relaxed">{{ persona.description }}</p>
+                    <p class="text-red-400 text-xs mt-1 italic">"{{ persona.daily_frustration }}"</p>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+              <!-- Pains & Desires tabs -->
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-xs text-red-400 font-semibold uppercase tracking-wider mb-2">😣 Dolores</p>
+                  <ul class="space-y-1">
+                    {% for pain in n.pains %}
+                    <li class="text-gray-400 text-xs leading-relaxed flex gap-2">
+                      <span class="text-red-600 flex-shrink-0">•</span>{{ pain }}
+                    </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+                <div>
+                  <p class="text-xs text-green-400 font-semibold uppercase tracking-wider mb-2">✨ Deseos</p>
+                  <ul class="space-y-1">
+                    {% for desire in n.desires %}
+                    <li class="text-gray-400 text-xs leading-relaxed flex gap-2">
+                      <span class="text-green-600 flex-shrink-0">•</span>{{ desire }}
+                    </li>
+                    {% endfor %}
+                  </ul>
+                </div>
+              </div>
+              <!-- Product names -->
+              {% if n.product_names %}
+              <div>
+                <p class="text-xs text-yellow-400 font-semibold uppercase tracking-wider mb-2">💡 Nombres Sugeridos</p>
+                <div class="flex flex-wrap gap-2">
+                  {% for name in n.product_names %}
+                  <span class="bg-gray-800 border border-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-full">{{ name }}</span>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+              <!-- Epiphany bridge -->
+              {% if n.epiphany_bridge %}
+              <div class="bg-violet-900/20 border border-violet-800/40 rounded-lg p-4">
+                <p class="text-xs text-violet-400 font-semibold uppercase tracking-wider mb-2">🌉 Epiphany Bridge</p>
+                <p class="text-gray-300 text-sm italic leading-relaxed">{{ n.epiphany_bridge }}</p>
+              </div>
+              {% endif %}
+            </div>
+            <!-- Regenerate button -->
+            <button onclick="generateModule('niche', {{ project.pk }})"
+                    class="mt-5 w-full border border-gray-700 hover:border-violet-600 text-gray-400 hover:text-violet-300 text-sm py-2.5 rounded-lg transition-colors">
+              ↻ Regenerar
+            </button>
+            {% endwith %}
+          {% else %}
+            <!-- Not generated yet -->
+            <div class="text-center py-6">
+              <p class="text-gray-500 text-sm mb-5">Analiza el nicho: detecta los dolores profundos, deseos y miedos de tu avatar ideal.</p>
+              <button onclick="generateModule('niche', {{ project.pk }})"
+                      class="bg-violet-600 hover:bg-violet-700 glow text-white font-bold px-6 py-3 rounded-xl transition-all w-full">
+                🎯 Analizar Nicho con IA
+              </button>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         CARD 2: ESTRUCTURA DE OFERTA
+    ══════════════════════════════════════ -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-offer">
+      <div class="flex items-center justify-between p-5 border-b border-gray-800">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-yellow-900/60 border border-yellow-700/60 flex items-center justify-center">
+            <span class="text-lg">💎</span>
+          </div>
+          <div>
+            <h2 class="font-bold text-gray-100">Oferta Irresistible</h2>
+            <p class="text-gray-500 text-xs">Precio · Bonuses · Garantía</p>
+          </div>
+        </div>
+        {% if has_offer %}
+          <span class="text-xs bg-green-900/40 border border-green-700/50 text-green-400 px-3 py-1 rounded-full font-medium">✓ Listo</span>
+        {% endif %}
+      </div>
+
+      <div class="p-5">
+        <div id="skeleton-offer" class="hidden space-y-3">
+          <div class="skeleton h-6 rounded w-2/3"></div>
+          <div class="skeleton h-4 rounded w-full"></div>
+          <div class="skeleton h-4 rounded w-4/5"></div>
+          <div class="skeleton h-4 rounded w-full"></div>
+        </div>
+
+        <div id="content-offer">
+          {% if has_offer %}
+            {% with o=project.offer_structure %}
+            <div class="space-y-5">
+              <!-- Product name & tagline -->
+              <div>
+                <h3 class="font-extrabold text-gray-100 text-xl leading-tight">{{ o.product_name }}</h3>
+                <p class="text-violet-300 italic text-sm mt-1">{{ o.tagline }}</p>
+              </div>
+              <!-- Price points -->
+              <div>
+                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">💰 Puntos de Precio</p>
+                <div class="space-y-2">
+                  {% for pp in o.price_points %}
+                  <div class="bg-gray-800 rounded-lg p-3 flex gap-3">
+                    <div class="text-2xl font-extrabold text-yellow-400 flex-shrink-0">${{ pp.price }}</div>
+                    <div>
+                      <p class="font-semibold text-gray-200 text-sm">{{ pp.label }}</p>
+                      <p class="text-gray-500 text-xs mt-0.5">{{ pp.justification }}</p>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              <!-- Bonuses -->
+              {% if o.bonuses %}
+              <div>
+                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">🎁 Bonuses</p>
+                <div class="space-y-2">
+                  {% for bonus in o.bonuses %}
+                  <div class="bg-gray-800 rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="font-medium text-gray-200 text-sm">{{ bonus.name }}</span>
+                      <span class="text-green-400 text-xs font-bold">{{ bonus.perceived_value }}</span>
+                    </div>
+                    <p class="text-gray-500 text-xs">{{ bonus.description }}</p>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+              <!-- Value stack summary -->
+              {% if o.total_value %}
+              <div class="bg-yellow-900/20 border border-yellow-700/30 rounded-lg p-3 flex items-center justify-between">
+                <div>
+                  <p class="text-gray-400 text-xs">Valor total percibido</p>
+                  <p class="text-gray-300 font-bold text-sm line-through">{{ o.total_value }}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-gray-400 text-xs">Tu inversión hoy</p>
+                  <p class="text-yellow-400 font-extrabold text-2xl">{{ o.your_investment }}</p>
+                </div>
+              </div>
+              {% endif %}
+              <!-- Guarantee -->
+              {% if o.guarantee %}
+              <div class="bg-green-900/20 border border-green-700/30 rounded-lg p-3">
+                <p class="text-xs text-green-400 font-semibold mb-1">🛡️ Garantía</p>
+                <p class="text-gray-300 text-xs leading-relaxed">{{ o.guarantee }}</p>
+              </div>
+              {% endif %}
+              <!-- Upsell & Order Bump -->
+              {% if o.upsell.name %}
+              <div class="grid grid-cols-2 gap-2">
+                <div class="bg-gray-800 rounded-lg p-3">
+                  <p class="text-xs text-pink-400 font-semibold mb-1">⬆️ Upsell</p>
+                  <p class="text-gray-300 text-xs font-medium">{{ o.upsell.name }}</p>
+                  <p class="text-pink-400 text-xs font-bold">${{ o.upsell.price }}</p>
+                </div>
+                {% if o.order_bump.name %}
+                <div class="bg-gray-800 rounded-lg p-3">
+                  <p class="text-xs text-orange-400 font-semibold mb-1">🛒 Order Bump</p>
+                  <p class="text-gray-300 text-xs font-medium">{{ o.order_bump.name }}</p>
+                  <p class="text-orange-400 text-xs font-bold">${{ o.order_bump.price }}</p>
+                </div>
+                {% endif %}
+              </div>
+              {% endif %}
+            </div>
+            <button onclick="generateModule('offer', {{ project.pk }})"
+                    class="mt-5 w-full border border-gray-700 hover:border-yellow-600 text-gray-400 hover:text-yellow-300 text-sm py-2.5 rounded-lg transition-colors">
+              ↻ Regenerar
+            </button>
+            {% endwith %}
+          {% else %}
+            <div class="text-center py-6">
+              <p class="text-gray-500 text-sm mb-5">
+                {% if has_niche %}
+                  Construye la oferta irresistible: precio psicológico, bonuses y garantía.
+                {% else %}
+                  <span class="text-yellow-500">⚠️ Primero completa el Análisis de Nicho.</span>
+                {% endif %}
+              </p>
+              <button onclick="generateModule('offer', {{ project.pk }})"
+                      {% if not has_niche %}disabled{% endif %}
+                      class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold px-6 py-3 rounded-xl transition-all w-full disabled:opacity-40 disabled:cursor-not-allowed">
+                💎 Generar Oferta con IA
+              </button>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         CARD 3: REVENUE MANAGEMENT
+    ══════════════════════════════════════ -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-revenue">
+      <div class="flex items-center justify-between p-5 border-b border-gray-800">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-emerald-900/60 border border-emerald-700/60 flex items-center justify-center">
+            <span class="text-lg">💸</span>
+          </div>
+          <div>
+            <h2 class="font-bold text-gray-100">Revenue Management</h2>
+            <p class="text-gray-500 text-xs">Order Bump · Upsell · OTO</p>
+          </div>
+        </div>
+        {% if has_revenue %}
+          <span class="text-xs bg-green-900/40 border border-green-700/50 text-green-400 px-3 py-1 rounded-full font-medium">✓ Listo</span>
+        {% endif %}
+      </div>
+
+      <div class="p-5">
+        <div id="skeleton-revenue" class="hidden space-y-3">
+          <div class="skeleton h-4 rounded w-2/3"></div>
+          <div class="skeleton h-4 rounded w-full"></div>
+          <div class="skeleton h-4 rounded w-5/6"></div>
+          <div class="skeleton h-4 rounded w-full"></div>
+        </div>
+
+        <div id="content-revenue">
+          {% if has_revenue %}
+            {% with r=project.revenue_strategy %}
+            <div class="space-y-4">
+              <div class="bg-orange-900/20 border border-orange-700/30 rounded-lg p-4">
+                <p class="text-xs text-orange-400 font-semibold mb-2">🛒 ORDER BUMP</p>
+                <p class="text-gray-100 text-sm font-bold">{{ r.order_bump.name|default:"Sin nombre" }}</p>
+                <p class="text-gray-300 text-xs leading-relaxed mt-1">{{ r.order_bump.benefit|default:"Sin beneficio definido" }}</p>
+                <div class="mt-2 inline-flex items-center rounded-full bg-orange-950 border border-orange-700 px-2.5 py-1">
+                  <span class="text-orange-300 text-xs font-bold">${{ r.order_bump.price|default:"17" }}</span>
+                </div>
+              </div>
+
+              <div class="bg-pink-900/20 border border-pink-700/30 rounded-lg p-4">
+                <p class="text-xs text-pink-400 font-semibold mb-2">⬆️ UPSELL (ONE-TIME OFFER)</p>
+                <p class="text-gray-100 text-sm font-bold">{{ r.upsell.title|default:"Sin título" }}</p>
+                <p class="text-gray-300 text-xs leading-relaxed mt-1">{{ r.upsell.big_promise|default:"Sin promesa definida" }}</p>
+                {% if r.upsell.oto_angle %}
+                <p class="text-pink-300 text-xs mt-2 italic">🔥 {{ r.upsell.oto_angle }}</p>
+                {% endif %}
+                <div class="mt-2 inline-flex items-center rounded-full bg-pink-950 border border-pink-700 px-2.5 py-1">
+                  <span class="text-pink-300 text-xs font-bold">${{ r.upsell.price|default:"47" }}</span>
+                </div>
+              </div>
+            </div>
+            <button onclick="generateModule('revenue', {{ project.pk }})"
+                    class="mt-5 w-full border border-gray-700 hover:border-emerald-600 text-gray-400 hover:text-emerald-300 text-sm py-2.5 rounded-lg transition-colors">
+              ↻ Regenerar
+            </button>
+            {% endwith %}
+          {% else %}
+            <div class="text-center py-6">
+              <p class="text-gray-500 text-sm mb-5">
+                {% if has_offer %}
+                  Diseña el Order Bump de impulso y el Upsell OTO para elevar el ticket promedio.
+                {% else %}
+                  <span class="text-yellow-500">⚠️ Primero completa la Oferta Irresistible.</span>
+                {% endif %}
+              </p>
+              <button onclick="generateModule('revenue', {{ project.pk }})"
+                      {% if not has_offer %}disabled{% endif %}
+                      class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl transition-all w-full disabled:opacity-40 disabled:cursor-not-allowed">
+                💸 Generar Motor de Revenue
+              </button>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════
+         CARD 4: ÍNDICE DEL INFOPRODUCTO
+    ══════════════════════════════════════ -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-outline">
+      <div class="flex items-center justify-between p-5 border-b border-gray-800">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-blue-900/60 border border-blue-700/60 flex items-center justify-center">
+            <span class="text-lg">📚</span>
+          </div>
+          <div>
+            <h2 class="font-bold text-gray-100">Índice del Infoproducto</h2>
+            <p class="text-gray-500 text-xs">E-book · 10 capítulos</p>
+          </div>
+        </div>
+        {% if has_outline %}
+          <span class="text-xs bg-green-900/40 border border-green-700/50 text-green-400 px-3 py-1 rounded-full font-medium">✓ Listo</span>
+        {% endif %}
+      </div>
+
+      <div class="p-5">
+        <div id="skeleton-outline" class="hidden space-y-3">
+          <div class="skeleton h-5 rounded w-4/5"></div>
+          <div class="skeleton h-3 rounded w-full"></div>
+          <div class="skeleton h-3 rounded w-full mt-2"></div>
+          <div class="skeleton h-3 rounded w-full"></div>
+          <div class="skeleton h-3 rounded w-3/4"></div>
+          <div class="skeleton h-3 rounded w-full"></div>
+        </div>
+
+        <div id="content-outline">
+          {% if has_outline %}
+            {% with ol=project.product_outline %}
+            <div class="space-y-4">
+              <div>
+                <h3 class="font-extrabold text-gray-100 leading-tight">{{ ol.title }}</h3>
+                {% if ol.subtitle %}<p class="text-blue-300 text-sm mt-1 italic">{{ ol.subtitle }}</p>{% endif %}
+                {% if ol.description %}<p class="text-gray-500 text-xs mt-2 leading-relaxed">{{ ol.description }}</p>{% endif %}
+              </div>
+              <!-- Chapters -->
+              <div class="space-y-2">
+                {% for ch in ol.chapters %}
+                <div class="bg-gray-800 rounded-lg p-3">
+                  <div class="flex items-start gap-3">
+                    <span class="text-blue-500 font-extrabold text-sm flex-shrink-0 w-6">{{ ch.number }}.</span>
+                    <div class="flex-1 min-w-0">
+                      <p class="font-medium text-gray-200 text-sm leading-snug">{{ ch.title }}</p>
+                      {% if ch.description %}<p class="text-gray-500 text-xs mt-1">{{ ch.description }}</p>{% endif %}
+                      {% if ch.key_points %}
+                      <div class="flex flex-wrap gap-1 mt-2">
+                        {% for point in ch.key_points %}
+                        <span class="bg-gray-700 text-gray-400 text-xs px-2 py-0.5 rounded">{{ point }}</span>
+                        {% endfor %}
+                      </div>
+                      {% endif %}
+                      {% if ch.transformation %}
+                      <p class="text-blue-400 text-xs mt-1.5 italic">→ {{ ch.transformation }}</p>
+                      {% endif %}
+                    </div>
+                    {% if ch.estimated_pages %}
+                    <span class="text-gray-600 text-xs flex-shrink-0">~{{ ch.estimated_pages }}p</span>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            <button onclick="generateModule('outline', {{ project.pk }})"
+                    class="mt-5 w-full border border-gray-700 hover:border-blue-600 text-gray-400 hover:text-blue-300 text-sm py-2.5 rounded-lg transition-colors">
+              ↻ Regenerar
+            </button>
+            {% endwith %}
+          {% else %}
+            <div class="text-center py-6">
+              <p class="text-gray-500 text-sm mb-5">
+                {% if has_offer %}
+                  Genera el índice completo de 10 capítulos para tu E-book.
+                {% else %}
+                  <span class="text-yellow-500">⚠️ Primero completa la Oferta Irresistible.</span>
+                {% endif %}
+              </p>
+              <button onclick="generateModule('outline', {{ project.pk }})"
+                      {% if not has_offer %}disabled{% endif %}
+                      class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded-xl transition-all w-full disabled:opacity-40 disabled:cursor-not-allowed">
+                📚 Generar Índice con IA
+              </button>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+        <!-- ══════════════════════════════════════
+          CARD 5: BIBLIOTECA DE COPIES
+        ══════════════════════════════════════ -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="card-copy">
+      <div class="flex items-center justify-between p-5 border-b border-gray-800">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-pink-900/60 border border-pink-700/60 flex items-center justify-center">
+            <span class="text-lg">✍️</span>
+          </div>
+          <div>
+            <h2 class="font-bold text-gray-100">Biblioteca de Copies</h2>
+            <p class="text-gray-500 text-xs">Headlines · Hooks · PAS · AIDA</p>
+          </div>
+        </div>
+        {% if has_copy %}
+          <span class="text-xs bg-green-900/40 border border-green-700/50 text-green-400 px-3 py-1 rounded-full font-medium">✓ Listo</span>
+        {% endif %}
+      </div>
+
+      <div class="p-5">
+        <div id="skeleton-copy" class="hidden space-y-3">
+          <div class="skeleton h-4 rounded w-full"></div>
+          <div class="skeleton h-4 rounded w-3/4"></div>
+          <div class="skeleton h-4 rounded w-full"></div>
+          <div class="skeleton h-4 rounded w-5/6"></div>
+          <div class="skeleton h-4 rounded w-full"></div>
+        </div>
+
+        <div id="content-copy">
+          {% if has_copy %}
+            {% with c=project.copy_library %}
+            <div class="space-y-5">
+              <!-- Short description -->
+              {% if c.short_description %}
+              <div class="bg-pink-900/20 border border-pink-700/30 rounded-lg p-3">
+                <p class="text-xs text-pink-400 font-semibold mb-1">📌 Descripción Corta (Ads)</p>
+                <p class="text-gray-300 text-sm leading-relaxed">{{ c.short_description }}</p>
+              </div>
+              {% endif %}
+
+              <!-- Headlines -->
+              {% if c.headlines %}
+              <div>
+                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">🎯 Headlines Ganadores</p>
+                <div class="space-y-2">
+                  {% for h in c.headlines %}
+                  <div class="bg-gray-800 rounded-lg p-3 flex items-start gap-2">
+                    <span class="text-pink-500 font-bold text-xs flex-shrink-0 mt-0.5">H{{ forloop.counter }}</span>
+                    <p class="text-gray-200 text-sm leading-snug">{{ h }}</p>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- Hooks -->
+              {% if c.hooks %}
+              <div>
+                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">🪝 Hooks por Plataforma</p>
+                <div class="space-y-2">
+                  {% for hook in c.hooks %}
+                  <div class="bg-gray-800 rounded-lg p-3">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="font-medium text-pink-300 text-xs">{{ hook.type }}</span>
+                      <span class="text-gray-600 text-xs bg-gray-700 px-2 py-0.5 rounded">{{ hook.platform }}</span>
+                    </div>
+                    <p class="text-gray-300 text-sm leading-relaxed">{{ hook.text }}</p>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- PAS Copy -->
+              {% if c.pas_copy %}
+              <div>
+                <button onclick="toggleCopy('pas')" class="w-full flex items-center justify-between bg-gray-800 hover:bg-gray-750 rounded-lg p-3 transition-colors">
+                  <span class="text-xs font-semibold text-gray-300">📝 Copy PAS (Facebook Ads)</span>
+                  <span id="pas-icon" class="text-gray-500 text-xs">▼ ver</span>
+                </button>
+                <div id="copy-pas" class="hidden bg-gray-800/50 rounded-b-lg p-4 mt-0.5">
+                  <pre class="text-gray-300 text-xs leading-relaxed whitespace-pre-wrap font-sans">{{ c.pas_copy }}</pre>
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- AIDA Copy -->
+              {% if c.aida_copy %}
+              <div>
+                <button onclick="toggleCopy('aida')" class="w-full flex items-center justify-between bg-gray-800 hover:bg-gray-750 rounded-lg p-3 transition-colors">
+                  <span class="text-xs font-semibold text-gray-300">📝 Copy AIDA (Landing Page)</span>
+                  <span id="aida-icon" class="text-gray-500 text-xs">▼ ver</span>
+                </button>
+                <div id="copy-aida" class="hidden bg-gray-800/50 rounded-b-lg p-4 mt-0.5">
+                  <pre class="text-gray-300 text-xs leading-relaxed whitespace-pre-wrap font-sans">{{ c.aida_copy }}</pre>
+                </div>
+              </div>
+              {% endif %}
+
+              <!-- CTAs -->
+              {% if c.cta_options %}
+              <div>
+                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">🚀 CTAs Listos</p>
+                <div class="flex flex-wrap gap-2">
+                  {% for cta in c.cta_options %}
+                  <button onclick="copyCTA(this)" data-text="{{ cta }}"
+                          class="bg-gray-800 hover:bg-violet-900/40 border border-gray-700 hover:border-violet-600 text-gray-300 text-xs px-3 py-2 rounded-lg transition-colors text-left">
+                    {{ cta }}
+                  </button>
+                  {% endfor %}
+                </div>
+              </div>
+              {% endif %}
+            </div>
+            <button onclick="generateModule('copy', {{ project.pk }})"
+                    class="mt-5 w-full border border-gray-700 hover:border-pink-600 text-gray-400 hover:text-pink-300 text-sm py-2.5 rounded-lg transition-colors">
+              ↻ Regenerar
+            </button>
+            {% endwith %}
+          {% else %}
+            <div class="text-center py-6">
+              <p class="text-gray-500 text-sm mb-5">
+                {% if has_outline %}
+                  Genera headlines, hooks para ads y copies completos en formato PAS y AIDA.
+                {% else %}
+                  <span class="text-yellow-500">⚠️ Primero completa el Índice del producto.</span>
+                {% endif %}
+              </p>
+              <button onclick="generateModule('copy', {{ project.pk }})"
+                      {% if not has_outline %}disabled{% endif %}
+                      class="bg-pink-600 hover:bg-pink-700 text-white font-bold px-6 py-3 rounded-xl transition-all w-full disabled:opacity-40 disabled:cursor-not-allowed">
+                ✍️ Generar Copies con IA
+              </button>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end grid -->
+
+  <!-- ═══════════════════════════════════════════════════════════
+       CHAPTER WRITER — Fase 2: Escritura Individual de Capítulos
+       Only visible once the outline is generated.
+  ════════════════════════════════════════════════════════════ -->
+  {% if has_outline %}
+
+  <!-- ── Knowledge Injection Panel ──────────────────────────── -->
+  <div class="mt-10 bg-gray-900 border border-gray-800 rounded-2xl p-6">
+    <div class="flex items-start gap-4 mb-5">
+      <div class="text-2xl mt-0.5">🧠</div>
+      <div class="flex-1">
+        <h2 class="text-lg font-bold text-gray-100 mb-1">Inyección de Conocimiento del Autor</h2>
+        <p class="text-sm text-gray-400">
+          Sube tus propias notas, investigación o un artículo web. La IA usará tu contenido como
+          base primaria para escribir los capítulos — haciendo el libro 100% único y personalizado.
+        </p>
+      </div>
+    </div>
+
+    <!-- Existing resources list -->
+    <div id="resources-list" class="space-y-2 mb-4">
+      {% for res in project.user_resources.all %}
+      <div class="resource-item flex items-center gap-3 bg-gray-800/60 rounded-xl px-3 py-2"
+           id="resource-item-{{ res.pk }}">
+        <span class="text-lg">{% if res.resource_type == 'pdf' %}📄{% else %}🌐{% endif %}</span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium text-gray-200 truncate">{{ res.title }}</p>
+          <p class="text-xs text-gray-500">{{ res.char_count|intcomma }} caracteres extraídos</p>
+        </div>
+        <button onclick="deleteResource({{ res.pk }})"
+                class="text-xs text-red-500 hover:text-red-400 transition-colors px-2 py-1">
+          ✕
+        </button>
+      </div>
+      {% empty %}
+      <p class="text-sm text-gray-600 italic" id="no-resources-msg">
+        No hay fuentes añadidas. La IA escribirá basándose en conocimiento general.
+      </p>
+      {% endfor %}
+    </div>
+
+    <!-- Add resource form (toggle) -->
+    <div class="border-t border-gray-800 pt-4">
+      <button onclick="toggleResourceForm()"
+              class="text-sm text-violet-400 hover:text-violet-300 font-medium transition-colors"
+              id="toggle-resource-btn">
+        + Añadir fuente (PDF o URL)
+      </button>
+
+      <div id="resource-form" class="hidden mt-4 space-y-3">
+        <!-- Type selector -->
+        <div class="flex gap-2">
+          <button onclick="setResourceType('url')"
+                  id="type-url-btn"
+                  class="flex-1 text-xs border-2 border-violet-500 bg-violet-900/20 text-violet-300 font-semibold py-2 rounded-lg transition-all">
+            🌐 URL de página web
+          </button>
+          <button onclick="setResourceType('pdf')"
+                  id="type-pdf-btn"
+                  class="flex-1 text-xs border-2 border-gray-700 hover:border-gray-500 text-gray-400 font-semibold py-2 rounded-lg transition-all">
+            📄 Subir PDF
+          </button>
+        </div>
+
+        <!-- URL fields -->
+        <div id="url-fields">
+          <input type="url" id="resource-url" placeholder="https://ejemplo.com/articulo"
+                 class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-violet-500">
+        </div>
+
+        <!-- PDF fields -->
+        <div id="pdf-fields" class="hidden">
+          <label class="block w-full cursor-pointer">
+            <div class="border-2 border-dashed border-gray-700 hover:border-violet-600 rounded-xl px-4 py-6 text-center transition-colors">
+              <p class="text-gray-400 text-sm mb-1">Arrastra tu PDF aquí o haz clic para seleccionar</p>
+              <p class="text-gray-600 text-xs">Máximo 20 MB · Solo .pdf</p>
+            </div>
+            <input type="file" id="resource-pdf" accept=".pdf" class="sr-only"
+                   onchange="document.querySelector('#pdf-fields .text-gray-400').textContent = this.files[0]?.name || 'Arrastra tu PDF aquí'">
+          </label>
+        </div>
+
+        <!-- Title (optional) -->
+        <input type="text" id="resource-title" placeholder="Título / descripción (opcional)"
+               class="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-violet-500">
+
+        <!-- Upload button -->
+        <button onclick="uploadResource({{ project.pk }})"
+                id="upload-resource-btn"
+                class="w-full bg-violet-700 hover:bg-violet-600 text-white font-bold py-2.5 rounded-lg text-sm transition-all">
+          ⬆️ Subir y extraer texto
+        </button>
+        <p id="upload-status" class="text-xs text-center hidden"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Chapter Writer Panel ────────────────────────────────── -->
+  <div class="mt-6 bg-gray-900 border border-gray-800 rounded-2xl p-6">
+    <!-- Header row: title + badges + factory button -->
+    <div class="flex flex-wrap items-start gap-4 mb-6">
+      <div class="flex-1">
+        <h2 class="text-xl font-bold text-gray-100 mb-1">✍️ Escritor de Capítulos</h2>
+        <p class="text-sm text-gray-400">Escribe cada capítulo con IA. Mínimo 800 palabras, estructura narrativa garantizada.</p>
+      </div>
+      <div class="flex items-center gap-3 shrink-0">
+        <!-- Written count badge -->
+        <span id="chapters-written-badge"
+              class="text-xs bg-violet-900/40 border border-violet-700 text-violet-300 px-3 py-1 rounded-full font-medium">
+          {{ written_count }} / {{ project.product_outline.chapters|length }} escritos
+        </span>
+        <!-- Download button (visible once at least one chapter exists) -->
+        {% if written_count > 0 %}
+        <a href="{% url 'core:download_ebook' project.pk %}"
+           id="download-btn"
+           class="text-xs bg-green-700 hover:bg-green-600 text-white font-bold px-3 py-1.5 rounded-lg transition-all">
+          ⬇️ Descargar E-book
+        </a>
+        {% else %}
+        <a href="{% url 'core:download_ebook' project.pk %}"
+           id="download-btn"
+           class="hidden text-xs bg-green-700 hover:bg-green-600 text-white font-bold px-3 py-1.5 rounded-lg transition-all">
+          ⬇️ Descargar E-book
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Factory button: write ALL chapters -->
+    <div class="mb-5 p-4 bg-gray-800/70 border border-gray-700 rounded-xl">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <p class="text-sm font-semibold text-gray-200 mb-0.5">🏭 Modo Fábrica</p>
+          <p class="text-xs text-gray-500">
+            Escribe todos los {{ project.product_outline.chapters|length }} capítulos automáticamente en secuencia.
+            Tiempo estimado: ~{{ project.product_outline.chapters|length }} minutos.
+          </p>
+        </div>
+        <button onclick="writeAllChapters({{ project.pk }})"
+                id="factory-btn"
+                class="shrink-0 bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all whitespace-nowrap">
+          ⚡ Escribir Todo
+        </button>
+      </div>
+      <!-- Factory progress bar (hidden until started) -->
+      <div id="factory-progress-wrap" class="hidden mt-4">
+        <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
+          <span id="factory-status-text">Iniciando...</span>
+          <span id="factory-percent">0%</span>
+        </div>
+        <div class="w-full bg-gray-700 rounded-full h-2">
+          <div id="factory-progress-bar"
+               class="bg-amber-500 h-2 rounded-full transition-all duration-500"
+               style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Per-chapter list -->
+    <div class="space-y-3" id="chapter-list">
+      {% for ch in project.product_outline.chapters %}
+      {% with chapter_num=forloop.counter %}
+      <div class="chapter-row flex items-center gap-4 bg-gray-800/50 rounded-xl px-4 py-3"
+           id="chapter-row-{{ chapter_num }}" data-chapter="{{ chapter_num }}">
+
+        <!-- Number badge -->
+        <span class="shrink-0 w-8 h-8 rounded-full bg-gray-700 text-gray-300 text-sm font-bold flex items-center justify-center">
+          {{ chapter_num }}
+        </span>
+
+        <!-- Title + description -->
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-semibold text-gray-200 truncate">{{ ch.title }}</p>
+          <p class="text-xs text-gray-500 truncate">{{ ch.description }}</p>
+        </div>
+
+        <!-- Word count badge -->
+        {% if chapter_num in written_chapters %}
+        <span class="shrink-0 text-xs px-2 py-0.5 rounded-full bg-green-900/40 border border-green-700 text-green-400 font-medium"
+              id="wc-badge-{{ chapter_num }}">{{ written_chapters|dict_get:chapter_num }} palabras</span>
+        {% else %}
+        <span class="shrink-0 text-xs hidden px-2 py-0.5 rounded-full bg-green-900/40 border border-green-700 text-green-400 font-medium"
+              id="wc-badge-{{ chapter_num }}"></span>
+        {% endif %}
+
+        <!-- Status icon -->
+        <span class="shrink-0 text-lg" id="chapter-status-{{ chapter_num }}">
+          {% if chapter_num in written_chapters %}✅{% endif %}
+        </span>
+
+        <!-- Write button -->
+        <button onclick="writeChapter({{ project.pk }}, {{ chapter_num }}, this)"
+                class="shrink-0 text-xs bg-violet-700 hover:bg-violet-600 text-white font-semibold px-3 py-1.5 rounded-lg transition-all"
+                id="write-btn-{{ chapter_num }}">
+          {% if chapter_num in written_chapters %}↻ Reescribir{% else %}Escribir{% endif %}
+        </button>
+      </div>
+      {% endwith %}
+      {% endfor %}
+    </div>
+
+    <!-- Preview panel -->
+    <div id="chapter-preview" class="hidden mt-6 bg-gray-800 border border-gray-700 rounded-xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-bold text-gray-200" id="preview-title">Capítulo X</h3>
+        <button onclick="document.getElementById('chapter-preview').classList.add('hidden')"
+                class="text-gray-500 hover:text-gray-300 text-xs">✕ Cerrar</button>
+      </div>
+      <div id="preview-content" class="prose prose-invert prose-sm max-w-none text-gray-300 leading-relaxed"></div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Delete project -->
+  <div class="mt-10 pt-6 border-t border-gray-800 flex justify-end">
+    <form method="post" action="{% url 'core:project_delete' project.pk %}"
+          onsubmit="return confirm('¿Eliminar este proyecto? Esta acción no se puede deshacer.')">
+      {% csrf_token %}
+      <button type="submit" class="text-red-600 hover:text-red-400 text-sm transition-colors">
+        🗑 Eliminar proyecto
+      </button>
+    </form>
+  </div>
+
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay" class="hidden fixed inset-0 bg-gray-950/80 backdrop-blur-sm z-50 flex items-center justify-center">
+  <div class="bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
+    <div class="w-12 h-12 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+    <h3 class="font-bold text-gray-100 mb-2" id="loading-title">Generando con IA...</h3>
+    <p class="text-gray-400 text-sm" id="loading-desc">Esto puede tomar 15-30 segundos</p>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/ai_stream.js"></script>
+<script>
+  // Pass step labels to the template context
+  const stepLabels = {{ step_labels_json|safe }};
+
+  // ── Chapter Writer ─────────────────────────────────────────────
+  const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+  let totalChapters = document.querySelectorAll('.chapter-row').length;
+  let writtenCount  = {{ written_count }};
+
+  function updateBadge() {
+    const badge = document.getElementById('chapters-written-badge');
+    if (badge) badge.textContent = `${writtenCount} / ${totalChapters} escritos`;
+  }
+
+  async function writeChapter(projectPk, chapterNum, btn) {
+    const row       = document.getElementById(`chapter-row-${chapterNum}`);
+    const statusEl  = document.getElementById(`chapter-status-${chapterNum}`);
+    const wcBadge   = document.getElementById(`wc-badge-${chapterNum}`);
+
+    btn.disabled  = true;
+    btn.textContent = '⏳';
+    if (statusEl) statusEl.textContent = '⏳';
+    row.classList.add('opacity-60');
+
+    try {
+      const resp = await fetch(`/api/write/chapter/${projectPk}/${chapterNum}/`, {
+        method : 'POST',
+        headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
+      });
+      const data = await resp.json();
+
+      if (data.success) {
+        // Update UI
+        btn.textContent = '↻ Reescribir';
+        btn.disabled    = false;
+        row.classList.remove('opacity-60');
+        if (statusEl) statusEl.textContent = '✅';
+
+        // Word count badge
+        if (wcBadge) {
+          wcBadge.textContent = `${data.word_count} palabras`;
+          wcBadge.classList.remove('hidden');
+        }
+
+        // Update written count if new
+        if (writtenCount < totalChapters) { writtenCount++; }
+        updateBadge();
+
+        // Show preview
+        const preview = document.getElementById('chapter-preview');
+        const previewTitle   = document.getElementById('preview-title');
+        const previewContent = document.getElementById('preview-content');
+        previewTitle.textContent = `Capítulo ${chapterNum}: ${data.title}`;
+        // Convert basic markdown bold/newlines to HTML
+        previewContent.innerHTML = data.content
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/^#+\s(.+)$/gm, '<h3 class="text-gray-100 font-bold mt-4 mb-2">$1</h3>')
+          .replace(/\n/g, '<br>');
+        preview.classList.remove('hidden');
+        preview.scrollIntoView({behavior: 'smooth', block: 'start'});
+      } else {
+        btn.textContent = 'Reintentar';
+        btn.disabled    = false;
+        row.classList.remove('opacity-60');
+        if (statusEl) statusEl.textContent = '❌';
+        alert(`Error: ${data.error}`);
+      }
+    } catch (err) {
+      btn.textContent = 'Reintentar';
+      btn.disabled    = false;
+      row.classList.remove('opacity-60');
+      if (statusEl) statusEl.textContent = '❌';
+      alert(`Error de red: ${err.message}`);
+    }
+  }
+
+  // ── Write ALL Chapters (SSE Fábrica) ──────────────────────────
+  function writeAllChapters(projectPk) {
+    const btn         = document.getElementById('factory-btn');
+    const progressWrap= document.getElementById('factory-progress-wrap');
+    const statusText  = document.getElementById('factory-status-text');
+    const percentEl   = document.getElementById('factory-percent');
+    const bar         = document.getElementById('factory-progress-bar');
+    const downloadBtn = document.getElementById('download-btn');
+
+    btn.disabled    = true;
+    btn.textContent = '⚡ Escribiendo…';
+    progressWrap.classList.remove('hidden');
+    statusText.textContent = 'Conectando con la IA…';
+
+    const evtSource = new EventSource(`/api/write/all-chapters/${projectPk}/`);
+
+    evtSource.onmessage = function(e) {
+      const d = JSON.parse(e.data);
+
+      if (d.type === 'chapter_done') {
+        const pct = Math.round((d.chapter / d.total) * 100);
+        statusText.textContent = `✅ Capítulo ${d.chapter}/${d.total}: ${d.title} (${d.word_count} palabras)`;
+        percentEl.textContent  = `${pct}%`;
+        bar.style.width        = `${pct}%`;
+
+        // Update per-chapter row
+        const statusEl = document.getElementById(`chapter-status-${d.chapter}`);
+        const wcBadge  = document.getElementById(`wc-badge-${d.chapter}`);
+        const writeBtn = document.getElementById(`write-btn-${d.chapter}`);
+        if (statusEl) statusEl.textContent = '✅';
+        if (wcBadge)  { wcBadge.textContent = `${d.word_count} palabras`; wcBadge.classList.remove('hidden'); }
+        if (writeBtn) { writeBtn.textContent = '↻ Reescribir'; writeBtn.disabled = false; }
+        writtenCount = d.chapter;
+        updateBadge();
+
+      } else if (d.type === 'chapter_error') {
+        const statusEl = document.getElementById(`chapter-status-${d.chapter}`);
+        if (statusEl) statusEl.textContent = '❌';
+        statusText.textContent = `❌ Error en cap. ${d.chapter}: ${d.error}`;
+
+      } else if (d.type === 'complete') {
+        evtSource.close();
+        bar.style.width        = '100%';
+        percentEl.textContent  = '100%';
+        statusText.textContent = `🎉 ¡Listo! ${d.chapters_written} capítulos · ${d.total_words.toLocaleString()} palabras`;
+        btn.textContent = '⚡ Escribir Todo';
+        btn.disabled    = false;
+        if (downloadBtn) downloadBtn.classList.remove('hidden');
+
+      } else if (d.type === 'error') {
+        evtSource.close();
+        statusText.textContent = `❌ ${d.message}`;
+        btn.textContent = '⚡ Escribir Todo';
+        btn.disabled    = false;
+      }
+    };
+
+    evtSource.onerror = function() {
+      evtSource.close();
+      statusText.textContent = '❌ Error de conexión. Inténtalo de nuevo.';
+      btn.textContent = '⚡ Escribir Todo';
+      btn.disabled    = false;
+    };
+  }
+
+  // ── Knowledge Injection: Upload Resource ──────────────────────
+  let activeResourceType = 'url';
+
+  function setResourceType(type) {
+    activeResourceType = type;
+    const urlBtn  = document.getElementById('type-url-btn');
+    const pdfBtn  = document.getElementById('type-pdf-btn');
+    const urlFlds = document.getElementById('url-fields');
+    const pdfFlds = document.getElementById('pdf-fields');
+
+    if (type === 'url') {
+      urlBtn.classList.replace('border-gray-700', 'border-violet-500');
+      urlBtn.classList.replace('text-gray-400', 'text-violet-300');
+      urlBtn.classList.add('bg-violet-900/20');
+      pdfBtn.classList.replace('border-violet-500', 'border-gray-700');
+      pdfBtn.classList.replace('text-violet-300', 'text-gray-400');
+      pdfBtn.classList.remove('bg-violet-900/20');
+      urlFlds.classList.remove('hidden');
+      pdfFlds.classList.add('hidden');
+    } else {
+      pdfBtn.classList.replace('border-gray-700', 'border-violet-500');
+      pdfBtn.classList.replace('text-gray-400', 'text-violet-300');
+      pdfBtn.classList.add('bg-violet-900/20');
+      urlBtn.classList.replace('border-violet-500', 'border-gray-700');
+      urlBtn.classList.replace('text-violet-300', 'text-gray-400');
+      urlBtn.classList.remove('bg-violet-900/20');
+      pdfFlds.classList.remove('hidden');
+      urlFlds.classList.add('hidden');
+    }
+  }
+
+  function toggleResourceForm() {
+    const form = document.getElementById('resource-form');
+    const btn  = document.getElementById('toggle-resource-btn');
+    if (form.classList.contains('hidden')) {
+      form.classList.remove('hidden');
+      btn.textContent = '− Cancelar';
+    } else {
+      form.classList.add('hidden');
+      btn.textContent = '+ Añadir fuente (PDF o URL)';
+    }
+  }
+
+  async function uploadResource(projectPk) {
+    const btn        = document.getElementById('upload-resource-btn');
+    const statusEl   = document.getElementById('upload-status');
+    const title      = document.getElementById('resource-title').value.trim();
+    const formData   = new FormData();
+    formData.append('resource_type', activeResourceType);
+    formData.append('title', title);
+    if (activeResourceType === 'url') {
+      const url = document.getElementById('resource-url').value.trim();
+      if (!url) { alert('Introduce una URL.'); return; }
+      formData.append('url', url);
+    } else {
+      const pdf = document.getElementById('resource-pdf').files[0];
+      if (!pdf) { alert('Selecciona un archivo PDF.'); return; }
+      formData.append('pdf_file', pdf);
+    }
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Extrayendo texto…';
+    statusEl.classList.remove('hidden');
+    statusEl.textContent = '';
+
+    try {
+      const resp = await fetch(`/api/resources/${projectPk}/upload/`, {
+        method : 'POST',
+        headers: {'X-CSRFToken': CSRF},
+        body   : formData,
+      });
+      const data = await resp.json();
+
+      if (data.success) {
+        // Append to resources list
+        const list      = document.getElementById('resources-list');
+        const noMsg     = document.getElementById('no-resources-msg');
+        if (noMsg) noMsg.remove();
+
+        const icon  = data.resource_type === 'pdf' ? '📄' : '🌐';
+        const chars = data.char_count.toLocaleString();
+        const div   = document.createElement('div');
+        div.className = 'resource-item flex items-center gap-3 bg-gray-800/60 rounded-xl px-3 py-2';
+        div.id        = `resource-item-${data.id}`;
+        div.innerHTML = `<span class="text-lg">${icon}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-gray-200 truncate">${data.title}</p>
+            <p class="text-xs text-gray-500">${chars} caracteres extraídos</p>
+          </div>
+          <button onclick="deleteResource(${data.id})"
+                  class="text-xs text-red-500 hover:text-red-400 transition-colors px-2 py-1">✕</button>`;
+        list.appendChild(div);
+
+        statusEl.textContent = `✅ Texto extraído: ${chars} caracteres`;
+        statusEl.className   = 'text-xs text-center text-green-400';
+
+        // Reset form
+        document.getElementById('resource-url').value  = '';
+        document.getElementById('resource-title').value = '';
+        document.getElementById('resource-pdf').value  = '';
+        document.querySelector('#pdf-fields .text-gray-400').textContent = 'Arrastra tu PDF aquí o haz clic para seleccionar';
+      } else {
+        statusEl.textContent = `❌ ${data.error}`;
+        statusEl.className   = 'text-xs text-center text-red-400';
+      }
+    } catch (err) {
+      statusEl.textContent = `❌ Error: ${err.message}`;
+      statusEl.className   = 'text-xs text-center text-red-400';
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = '⬆️ Subir y extraer texto';
+      statusEl.classList.remove('hidden');
+    }
+  }
+
+  async function deleteResource(resourcePk) {
+    if (!confirm('¿Eliminar esta fuente de conocimiento?')) return;
+    try {
+      const resp = await fetch(`/api/resources/${resourcePk}/delete/`, {
+        method : 'POST',
+        headers: {'X-CSRFToken': CSRF},
+      });
+      const data = await resp.json();
+      if (data.success) {
+        const el = document.getElementById(`resource-item-${resourcePk}`);
+        if (el) el.remove();
+      }
+    } catch (err) {
+      alert(`Error al eliminar: ${err.message}`);
+    }
+  }
+</script>
+{% endblock %}

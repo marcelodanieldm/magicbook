@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}MagicBook - Transforma tu idea en un negocio de infoproductos{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<section class="relative overflow-hidden">
+  <div class="absolute inset-0 bg-gradient-to-br from-violet-900/20 via-gray-950 to-gray-950 pointer-events-none"></div>
+  <div class="max-w-5xl mx-auto px-4 py-24 text-center relative z-10">
+    <div class="inline-flex items-center gap-2 bg-violet-900/30 border border-violet-700/50 text-violet-300 text-xs font-semibold px-4 py-2 rounded-full mb-8">
+      <span class="w-2 h-2 rounded-full bg-violet-400 animate-pulse"></span>
+      MVP Fase 1 — Motor de Ofertas e Investigación
+    </div>
+    <h1 class="text-5xl sm:text-6xl font-extrabold leading-tight mb-6">
+      De una idea simple a un<br />
+      <span class="gradient-text">ecosistema de infoproductos</span><br />
+      en menos de 15 minutos.
+    </h1>
+    <p class="text-gray-400 text-xl max-w-2xl mx-auto mb-10">
+      MagicBook analiza tu nicho, construye tu oferta irresistible, genera el índice de tu E-book y crea los copies listos para vender — todo con IA.
+    </p>
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+      <a href="{% url 'accounts:register' %}" class="bg-violet-600 hover:bg-violet-700 glow text-white font-bold px-8 py-4 rounded-xl text-lg transition-all">
+        Crear mi primer infoproducto →
+      </a>
+      <a href="{% url 'accounts:login' %}" class="border border-gray-700 hover:border-gray-500 text-gray-300 font-medium px-8 py-4 rounded-xl text-lg transition-colors">
+        Ya tengo cuenta
+      </a>
+    </div>
+    <p class="mt-5 text-gray-600 text-sm">Sin tarjeta de crédito · Empieza en 30 segundos</p>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="max-w-6xl mx-auto px-4 py-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+  {% for feature in features %}
+  <div class="bg-gray-900 border border-gray-800 card-hover rounded-xl p-6">
+    <div class="text-3xl mb-4">{{ feature.icon }}</div>
+    <h3 class="font-bold text-gray-100 mb-2">{{ feature.title }}</h3>
+    <p class="text-gray-400 text-sm leading-relaxed">{{ feature.desc }}</p>
+  </div>
+  {% endfor %}
+</section>
+
+<!-- Steps -->
+<section class="max-w-4xl mx-auto px-4 py-16">
+  <h2 class="text-3xl font-bold text-center mb-12">¿Cómo funciona?</h2>
+  <div class="relative">
+    <div class="absolute left-6 top-0 bottom-0 w-px bg-gradient-to-b from-violet-600 to-transparent hidden sm:block"></div>
+    <div class="space-y-10">
+      {% for step in steps %}
+      <div class="flex gap-6 items-start">
+        <div class="flex-shrink-0 w-12 h-12 rounded-full bg-violet-900/60 border border-violet-700 flex items-center justify-center font-bold text-violet-300 z-10">
+          {{ step.num }}
+        </div>
+        <div class="pt-1">
+          <h3 class="font-bold text-gray-100 mb-1">{{ step.title }}</h3>
+          <p class="text-gray-400 text-sm">{{ step.desc }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- CTA bottom -->
+<section class="max-w-3xl mx-auto px-4 py-16 text-center">
+  <div class="bg-gradient-to-br from-violet-900/30 to-gray-900 border border-violet-800/40 rounded-2xl p-12">
+    <h2 class="text-3xl font-bold mb-4">Lanza tu primer infoproducto hoy</h2>
+    <p class="text-gray-400 mb-8">Únete a emprendedores que ya están generando ingresos con infoproductos inteligentes.</p>
+    <a href="{% url 'accounts:register' %}" class="bg-violet-600 hover:bg-violet-700 glow text-white font-bold px-8 py-4 rounded-xl text-lg transition-all inline-block">
+      Empezar Gratis →
+    </a>
+  </div>
+</section>
+{% endblock %}

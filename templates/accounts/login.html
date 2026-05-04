@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Iniciar Sesión · MagicBook{% endblock %}
+
+{% block content %}
+<div class="min-h-[80vh] flex items-center justify-center px-4 py-12">
+  <div class="w-full max-w-md">
+    <div class="text-center mb-8">
+      <span class="text-5xl">✨</span>
+      <h1 class="text-3xl font-extrabold mt-4 mb-2">Bienvenido de vuelta</h1>
+      <p class="text-gray-400">Ingresa a tu cuenta para continuar.</p>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8">
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-5">
+          <label class="block text-sm font-semibold text-gray-300 mb-2">Usuario</label>
+          <input type="text" name="username" value="{{ username|default:'' }}" required autofocus
+                 class="w-full bg-gray-800 border border-gray-600 text-gray-100 rounded-lg p-3 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                 placeholder="Tu nombre de usuario" />
+        </div>
+        <div class="mb-6">
+          <label class="block text-sm font-semibold text-gray-300 mb-2">Contraseña</label>
+          <input type="password" name="password" required
+                 class="w-full bg-gray-800 border border-gray-600 text-gray-100 rounded-lg p-3 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                 placeholder="Tu contraseña" />
+        </div>
+        <button type="submit"
+                class="w-full bg-violet-600 hover:bg-violet-700 glow text-white font-bold py-3 rounded-xl transition-all">
+          Ingresar →
+        </button>
+      </form>
+      <p class="text-center text-gray-500 text-sm mt-5">
+        ¿No tienes cuenta?
+        <a href="{% url 'accounts:register' %}" class="text-violet-400 hover:text-violet-300 font-medium">Regístrate gratis</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

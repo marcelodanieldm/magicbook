@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Plan A Onboarding · MagicBook{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-10">
+  <div class="bg-gradient-to-r from-emerald-900/30 via-violet-900/30 to-sky-900/30 border border-emerald-700/40 rounded-2xl p-6 mb-6">
+    <p class="text-emerald-300 text-xs font-semibold tracking-wider uppercase">Plan A · USD29/mes</p>
+    <h1 class="text-2xl font-extrabold text-gray-100 mt-1">Qué pasa después de comprar</h1>
+    <p class="text-gray-300 text-sm mt-2">Flujo activado: credenciales enviadas, acceso inmediato y lanzamiento del primer producto hoy.</p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <div class="bg-gray-900 border {% if step1_done %}border-green-700{% else %}border-gray-700{% endif %} rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs text-gray-400">Paso 1</span>
+        {% if step1_done %}<span class="text-green-400 text-xs">✓ completado</span>{% else %}<span class="text-yellow-400 text-xs">pendiente</span>{% endif %}
+      </div>
+      <h2 class="text-sm font-bold text-gray-100 mb-2">Recibes email con credenciales</h2>
+      <p class="text-xs text-gray-400 mb-3">Enviamos acceso con usuario + enlaces directos al dashboard y creación de proyecto.</p>
+      <form method="post" action="{% url 'accounts:plan_a_resend_credentials' %}">
+        {% csrf_token %}
+        <button type="submit" class="w-full text-xs bg-violet-700 hover:bg-violet-600 text-white font-semibold py-2 rounded-lg">
+          Reenviar email de credenciales
+        </button>
+      </form>
+      {% if enrollment.credentials_email_sent_at %}
+      <p class="text-[11px] text-gray-500 mt-2">Último envío: {{ enrollment.credentials_email_sent_at|date:"d/m/Y H:i" }}</p>
+      {% endif %}
+    </div>
+
+    <div class="bg-gray-900 border {% if step2_done %}border-green-700{% else %}border-gray-700{% endif %} rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs text-gray-400">Paso 2</span>
+        {% if step2_done %}<span class="text-green-400 text-xs">✓ completado</span>{% else %}<span class="text-yellow-400 text-xs">pendiente</span>{% endif %}
+      </div>
+      <h2 class="text-sm font-bold text-gray-100 mb-2">Entras a la app al toque</h2>
+      <p class="text-xs text-gray-400 mb-3">Ya estás dentro de tu entorno de trabajo con Plan A activo.</p>
+      <a href="{% url 'core:dashboard' %}" class="block w-full text-center text-xs bg-emerald-700 hover:bg-emerald-600 text-white font-semibold py-2 rounded-lg">
+        Ir al dashboard
+      </a>
+      {% if enrollment.first_login_at %}
+      <p class="text-[11px] text-gray-500 mt-2">Primer acceso: {{ enrollment.first_login_at|date:"d/m/Y H:i" }}</p>
+      {% endif %}
+    </div>
+
+    <div class="bg-gray-900 border {% if step3_done %}border-green-700{% else %}border-gray-700{% endif %} rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs text-gray-400">Paso 3</span>
+        {% if step3_done %}<span class="text-green-400 text-xs">✓ completado</span>{% else %}<span class="text-yellow-400 text-xs">pendiente</span>{% endif %}
+      </div>
+      <h2 class="text-sm font-bold text-gray-100 mb-2">Lanzas tu primer producto hoy</h2>
+      <p class="text-xs text-gray-400 mb-3">Crea proyecto y dispara tu primer testeo desde la fábrica.</p>
+      {% if has_project %}
+      <a href="{% url 'core:dashboard' %}" class="block w-full text-center text-xs bg-green-700 hover:bg-green-600 text-white font-semibold py-2 rounded-lg">
+        Ver mis proyectos
+      </a>
+      {% else %}
+      <a href="{% url 'core:project_create' %}" class="block w-full text-center text-xs bg-pink-700 hover:bg-pink-600 text-white font-semibold py-2 rounded-lg">
+        Crear mi primer producto
+      </a>
+      {% endif %}
+      {% if enrollment.first_project_launched_at %}
+      <p class="text-[11px] text-gray-500 mt-2">Primer proyecto: {{ enrollment.first_project_launched_at|date:"d/m/Y H:i" }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="text-center">
+    <a href="{% url 'core:dashboard' %}" class="text-gray-400 hover:text-gray-200 text-sm">Continuar al Dashboard →</a>
+  </div>
+</div>
+{% endblock %}

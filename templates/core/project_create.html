@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+{% block title %}Nuevo Proyecto · MagicBook{% endblock %}
+
+{% block extra_head %}
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/framer-motion/dist/framer-motion.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-16">
+  <div class="mb-8">
+    <a href="{% url 'core:dashboard' %}" class="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Volver al dashboard</a>
+  </div>
+
+  <div class="text-center mb-10">
+    <div class="text-5xl mb-4">🚀</div>
+    <h1 class="text-3xl font-extrabold mb-3">¿Cuál es tu idea de infoproducto?</h1>
+    <p class="text-gray-400">Escríbela en lenguaje natural. MagicBook hará el resto.</p>
+  </div>
+
+  <!-- NicheScanner: Deep Research frontend module -->
+  <div id="niche-scanner-root" class="mb-8"></div>
+
+  <!-- Examples -->
+  <div class="mb-6">
+    <p class="text-xs text-gray-500 mb-3 font-medium uppercase tracking-wider">Ejemplos de nichos que funcionan:</p>
+    <div class="flex flex-wrap gap-2" id="examples">
+      <button type="button" data-example="Finanzas personales para jóvenes de 20-30 años que quieren salir de deudas"
+              class="example-btn bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-full transition-colors">
+        💰 Finanzas personales
+      </button>
+      <button type="button" data-example="Cocina vegana fácil para madres ocupadas que no tienen tiempo de cocinar"
+              class="example-btn bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-full transition-colors">
+        🥗 Cocina vegana
+      </button>
+      <button type="button" data-example="Freelancing en diseño gráfico para personas que quieren dejar su trabajo de oficina"
+              class="example-btn bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-full transition-colors">
+        🎨 Freelancing
+      </button>
+      <button type="button" data-example="Meditación y mindfulness para emprendedores con ansiedad y estrés laboral"
+              class="example-btn bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded-full transition-colors">
+        🧘 Mindfulness
+      </button>
+    </div>
+  </div>
+
+  <form method="post" class="bg-gray-900 border border-gray-800 rounded-2xl p-8">
+    {% csrf_token %}
+    <div class="mb-6">
+      <label class="block text-sm font-semibold text-gray-300 mb-3">
+        Tu nicho o idea de infoproducto
+      </label>
+      {{ form.niche_input }}
+      {% if form.niche_input.errors %}
+        <p class="mt-2 text-red-400 text-sm">{{ form.niche_input.errors.0 }}</p>
+      {% endif %}
+    </div>
+
+    <!-- Brand Voice Selector -->
+    <div class="mb-6">
+      <label class="block text-sm font-semibold text-gray-300 mb-3">🎙️ Voz de Marca de la IA</label>
+      <p class="text-xs text-gray-500 mb-3">Define el tono con el que la IA escribirá todo el contenido de tu infoproducto.</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="brand-voice-grid">
+        {% for choice_val, choice_label in form.brand_voice.field.choices %}
+        <label class="voice-card cursor-pointer border-2 rounded-xl p-3 transition-all
+                       {% if forloop.first %}border-violet-500 bg-violet-900/20{% else %}border-gray-700 hover:border-gray-500{% endif %}">
+          <input type="radio" name="brand_voice" value="{{ choice_val }}"
+                 class="sr-only"
+                 {% if forloop.first %}checked{% endif %}>
+          <span class="text-sm font-medium text-gray-200">{{ choice_label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- AI Model Selector -->
+    <div class="mb-8">
+      <label class="block text-sm font-semibold text-gray-300 mb-3">🤖 Modelo de IA</label>
+      <p class="text-xs text-gray-500 mb-3">GPT-4o es más rápido. Claude 3.5 Sonnet escribe mejor la prosa de los capítulos.</p>
+      <div class="flex gap-3" id="model-grid">
+        {% for choice_val, choice_label in form.ai_model.field.choices %}
+        <label class="model-card flex-1 cursor-pointer border-2 rounded-xl p-3 text-center transition-all
+                       {% if forloop.first %}border-violet-500 bg-violet-900/20{% else %}border-gray-700 hover:border-gray-500{% endif %}">
+          <input type="radio" name="ai_model" value="{{ choice_val }}"
+                 class="sr-only"
+                 {% if forloop.first %}checked{% endif %}>
+          <span class="text-sm font-medium text-gray-200">{{ choice_label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Multi-market config -->
+    <div class="mb-8 bg-gray-800/40 border border-gray-700 rounded-xl p-4">
+      <label class="block text-sm font-semibold text-gray-300 mb-2">🌎 Configuración Multi-mercado</label>
+      <p class="text-xs text-gray-500 mb-3">Plan A incluye AR, MX, CO, CL, UY, BR, ES + más. Elige tu mercado principal y los mercados objetivo.</p>
+
+      <div class="mb-4">
+        <label class="block text-xs text-gray-400 mb-1">Mercado principal</label>
+        {{ form.primary_market }}
+      </div>
+
+      <div>
+        <label class="block text-xs text-gray-400 mb-2">Mercados objetivo</label>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm text-gray-300">
+          {% for checkbox in form.target_markets %}
+            <label class="flex items-center gap-2 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5">
+              {{ checkbox.tag }}
+              <span>{{ checkbox.choice_label }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <button type="submit"
+            class="w-full bg-violet-600 hover:bg-violet-700 glow text-white font-bold py-4 rounded-xl text-lg transition-all">
+      Construir mi negocio con IA →
+    </button>
+    <p class="text-center text-gray-600 text-xs mt-4">Plan A USD29/mes: workflow completo + multi-mercado + testeos escalables</p>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.querySelectorAll('.example-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelector('textarea').value = btn.dataset.example;
+      document.querySelector('textarea').focus();
+    });
+  });
+
+  // Radio card selection highlight — brand voice
+  document.querySelectorAll('#brand-voice-grid .voice-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('#brand-voice-grid .voice-card').forEach(c => {
+        c.classList.remove('border-violet-500', 'bg-violet-900/20');
+        c.classList.add('border-gray-700');
+      });
+      card.classList.remove('border-gray-700');
+      card.classList.add('border-violet-500', 'bg-violet-900/20');
+    });
+  });
+
+  // Radio card selection highlight — model
+  document.querySelectorAll('#model-grid .model-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('#model-grid .model-card').forEach(c => {
+        c.classList.remove('border-violet-500', 'bg-violet-900/20');
+        c.classList.add('border-gray-700');
+      });
+      card.classList.remove('border-gray-700');
+      card.classList.add('border-violet-500', 'bg-violet-900/20');
+    });
+  });
+</script>
+
+{% verbatim %}<script type="text/babel">
+  function NicheScanner() {
+    const { useState } = React;
+    const { motion, AnimatePresence } = window.framerMotion;
+
+    const [niche, setNiche] = useState('');
+    const [country, setCountry] = useState('México');
+    const [isLoading, setIsLoading] = useState(false);
+    const [results, setResults] = useState(null);
+
+    const countryOptions = ['México', 'España', 'Argentina', 'Colombia', 'Chile', 'Perú'];
+
+    const getInsights = (nicheText, selectedCountry) => {
+      const n = nicheText.toLowerCase();
+      const region = selectedCountry;
+
+      let pains = [
+        `Sienten que han probado soluciones para ${nicheText} y nada se mantiene en el tiempo.`,
+        `Pierden dinero en herramientas o cursos que no aterrizan a su realidad en ${region}.`,
+        'Viven con sobrecarga mental por exceso de información y falta de una ruta clara.',
+        'Se frustran porque no ven resultados visibles en las primeras semanas.',
+      ];
+
+      let desires = [
+        `Quieren una metodología simple para avanzar en ${nicheText} sin sentirse abrumados.`,
+        'Desean resultados medibles en menos de 30 días para recuperar motivación.',
+        `Buscan una solución adaptada al contexto real de ${region}.`,
+        'Quieren confianza para ejecutar sin depender de motivación constante.',
+      ];
+
+      let fears = [
+        'Temen invertir otra vez y volver a decepcionarse.',
+        'Les preocupa quedarse atrás frente a otros que avanzan más rápido.',
+        'Miedo a no tener disciplina suficiente para sostener el proceso.',
+        `Temen que en ${region} “esto no funcione igual” por su mercado o entorno.`
+      ];
+
+      if (n.includes('finanzas')) {
+        pains = [
+          'Llegan al final del mes sin claridad de a dónde se fue su dinero.',
+          'Viven en ciclos de deuda y pago mínimo que nunca terminan.',
+          'Ansiedad constante por gastos imprevistos y cero fondo de emergencia.',
+          `Sienten que en ${region} el costo de vida sube más rápido que sus ingresos.`
+        ];
+        desires = [
+          'Tener control total de su flujo de caja con un sistema simple.',
+          'Eliminar deudas de alto interés con un plan accionable.',
+          'Construir un fondo de emergencia en 90 días.',
+          'Empezar a invertir sin miedo y con reglas claras.'
+        ];
+        fears = [
+          'Miedo a una emergencia médica o familiar sin respaldo financiero.',
+          'Temor a “trabajar toda la vida” sin libertad económica.',
+          'Miedo a cometer errores de inversión por desinformación.',
+          'Temor a repetir patrones financieros heredados.'
+        ];
+      }
+
+      if (n.includes('vegana') || n.includes('cocina')) {
+        pains = [
+          'No saben qué cocinar rápido sin caer en recetas repetidas.',
+          'Perciben la alimentación vegana como costosa y complicada.',
+          'Les falta planificación y terminan pidiendo comida procesada.',
+          'Se cansan de buscar recetas que sí funcionen en su rutina real.'
+        ];
+        desires = [
+          'Tener menús semanales listos en menos de 20 minutos de planificación.',
+          'Comer saludable sin disparar el presupuesto del hogar.',
+          'Variar comidas sin perder tiempo ni energía mental.',
+          'Sentirse con más energía y menos culpa al final del día.'
+        ];
+        fears = [
+          'Miedo a no cubrir nutrientes importantes en su familia.',
+          'Temor a que su entorno rechace el cambio de alimentación.',
+          'Miedo a abandonar por falta de tiempo o ideas.',
+          'Temen que “comer vegano” implique renunciar al sabor.'
+        ];
+      }
+
+      return { pains, desires, fears };
+    };
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      if (!niche.trim()) return;
+
+      setIsLoading(true);
+      setResults(null);
+
+      window.setTimeout(() => {
+        setResults(getInsights(niche.trim(), country));
+        setIsLoading(false);
+      }, 2100);
+    };
+
+    return (
+      <motion.section
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="bg-gray-900 border border-gray-800 rounded-2xl p-6"
+      >
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-gray-100">NicheScanner</h2>
+          <p className="text-sm text-gray-400">Investigación de Nicho (Deep Research) sin salir de MagicBook.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-5">
+          <div className="md:col-span-7">
+            <label className="block text-xs text-gray-400 mb-1">Nicho</label>
+            <input
+              value={niche}
+              onChange={(e) => setNiche(e.target.value)}
+              placeholder="Ej: Finanzas personales para freelancers"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-violet-500"
+            />
+          </div>
+
+          <div className="md:col-span-3">
+            <label className="block text-xs text-gray-400 mb-1">País</label>
+            <select
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-violet-500"
+            >
+              {countryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          <div className="md:col-span-2 flex items-end">
+            <button
+              type="submit"
+              className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-2 rounded-lg transition-colors"
+            >
+              Escanear
+            </button>
+          </div>
+        </form>
+
+        <AnimatePresence mode="wait">
+          {isLoading && (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="bg-gray-800/70 border border-gray-700 rounded-xl p-4"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-violet-300 font-medium">Escaneando señales del mercado...</span>
+                <span className="text-xs text-gray-400">{country}</span>
+              </div>
+              <div className="relative h-2 bg-gray-700 rounded-full overflow-hidden">
+                <motion.div
+                  className="absolute top-0 left-0 h-full w-1/3 bg-gradient-to-r from-violet-500 via-pink-500 to-violet-500"
+                  animate={{ x: ['-120%', '320%'] }}
+                  transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
+                />
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-gray-500">
+                <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.1 }}>Foros</motion.div>
+                <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.1, delay: 0.2 }}>Comentarios</motion.div>
+                <motion.div animate={{ opacity: [0.4, 1, 0.4] }} transition={{ repeat: Infinity, duration: 1.1, delay: 0.4 }}>Tendencias</motion.div>
+              </div>
+            </motion.div>
+          )}
+
+          {!isLoading && results && (
+            <motion.div
+              key="results"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.28 }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-3"
+            >
+              <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.05 }} className="bg-red-900/20 border border-red-700/40 rounded-xl p-4">
+                <p className="text-xs font-semibold text-red-400 mb-2 uppercase tracking-wide">Dolores</p>
+                <ul className="space-y-2">
+                  {results.pains.map((item, i) => (
+                    <li key={i} className="text-xs text-gray-300 leading-relaxed">• {item}</li>
+                  ))}
+                </ul>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-green-900/20 border border-green-700/40 rounded-xl p-4">
+                <p className="text-xs font-semibold text-green-400 mb-2 uppercase tracking-wide">Deseos</p>
+                <ul className="space-y-2">
+                  {results.desires.map((item, i) => (
+                    <li key={i} className="text-xs text-gray-300 leading-relaxed">• {item}</li>
+                  ))}
+                </ul>
+              </motion.div>
+
+              <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }} className="bg-amber-900/20 border border-amber-700/40 rounded-xl p-4">
+                <p className="text-xs font-semibold text-amber-400 mb-2 uppercase tracking-wide">Miedos</p>
+                <ul className="space-y-2">
+                  {results.fears.map((item, i) => (
+                    <li key={i} className="text-xs text-gray-300 leading-relaxed">• {item}</li>
+                  ))}
+                </ul>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.section>
+    );
+  }
+
+  (function mountNicheScanner() {
+    const rootEl = document.getElementById('niche-scanner-root');
+    if (!rootEl || !window.React || !window.ReactDOM || !window.framerMotion) return;
+    const root = ReactDOM.createRoot(rootEl);
+    root.render(<NicheScanner />);
+  })();
+</script>{% endverbatim %}
+{% endblock %}

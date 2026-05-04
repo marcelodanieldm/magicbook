@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · MagicBook{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-10">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
+    <div>
+      <h1 class="text-3xl font-extrabold">Mis Proyectos</h1>
+      <p class="text-gray-400 mt-1">Cada proyecto es un infoproducto listo para vender.</p>
+    </div>
+    <a href="{% url 'core:project_create' %}"
+       class="bg-violet-600 hover:bg-violet-700 glow text-white font-bold px-6 py-3 rounded-xl transition-all flex items-center gap-2 w-fit">
+      <span class="text-lg">+</span> Nuevo Proyecto
+    </a>
+  </div>
+
+  {% if projects %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      {% for project in projects %}
+      <a href="{% url 'core:project_detail' project.pk %}"
+         class="bg-gray-900 border border-gray-800 card-hover rounded-xl p-6 block group">
+        <!-- Status badge -->
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-xs font-semibold px-3 py-1 rounded-full
+            {% if project.status == 'draft' %}bg-gray-800 text-gray-400
+            {% elif project.status == 'copy_done' %}bg-green-900/60 text-green-400 border border-green-700/50
+            {% else %}bg-violet-900/50 text-violet-300 border border-violet-700/50{% endif %}">
+            {{ project.get_status_display }}
+          </span>
+          <span class="text-gray-600 text-xs">{{ project.created_at|date:"d M Y" }}</span>
+        </div>
+
+        <!-- Title -->
+        <h2 class="font-bold text-gray-100 text-lg leading-snug mb-2 group-hover:text-violet-300 transition-colors">
+          {{ project.title|default:"Sin título aún" }}
+        </h2>
+        <p class="text-gray-500 text-sm line-clamp-2 mb-5">{{ project.niche_input }}</p>
+
+        <!-- Progress bar -->
+        <div class="mb-1 flex items-center justify-between text-xs text-gray-500">
+          <span>Progreso del Motor</span>
+          <span>{{ project.completion_percentage }}%</span>
+        </div>
+        <div class="w-full bg-gray-800 rounded-full h-2">
+          <div class="bg-gradient-to-r from-violet-600 to-pink-500 h-2 rounded-full transition-all"
+               style="width: {{ project.completion_percentage }}%"></div>
+        </div>
+
+        <!-- Step indicators -->
+        <div class="mt-4 flex gap-2">
+          {% with steps=project.steps_completed %}
+          <span title="Análisis de Nicho" class="flex-1 h-1 rounded-full {% if steps >= 1 %}bg-violet-500{% else %}bg-gray-700{% endif %}"></span>
+          <span title="Oferta" class="flex-1 h-1 rounded-full {% if steps >= 2 %}bg-violet-500{% else %}bg-gray-700{% endif %}"></span>
+          <span title="Índice" class="flex-1 h-1 rounded-full {% if steps >= 3 %}bg-violet-500{% else %}bg-gray-700{% endif %}"></span>
+          <span title="Copies" class="flex-1 h-1 rounded-full {% if steps >= 4 %}bg-violet-500{% else %}bg-gray-700{% endif %}"></span>
+          {% endwith %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+
+  {% else %}
+    <!-- Empty state -->
+    <div class="text-center py-24 border-2 border-dashed border-gray-800 rounded-2xl">
+      <div class="text-6xl mb-5">✨</div>
+      <h2 class="text-2xl font-bold mb-3">Tu primer infoproducto te está esperando</h2>
+      <p class="text-gray-400 mb-8 max-w-md mx-auto">
+        Escribe tu idea o nicho y MagicBook construirá el esqueleto completo de tu negocio.
+      </p>
+      <a href="{% url 'core:project_create' %}"
+         class="bg-violet-600 hover:bg-violet-700 glow text-white font-bold px-8 py-4 rounded-xl text-lg transition-all inline-block">
+        Crear mi primer proyecto →
+      </a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

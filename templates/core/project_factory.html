@@ -1,0 +1,746 @@
+{% extends "base.html" %}
+{% block title %}Fábrica 16 · {{ project.title|default:"Proyecto" }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .feature-card { transition: border-color .2s, box-shadow .2s; }
+  .feature-card:hover { border-color: #6d28d9; box-shadow: 0 0 0 1px #6d28d960; }
+  .done-card { border-color: #065f46 !important; }
+  .badge-done { background:#064e3b; color:#34d399; border:1px solid #065f46; }
+  .badge-pending { background:#1f2937; color:#6b7280; border:1px solid #374151; }
+  .copy-btn { cursor:pointer; transition: color .15s; }
+  .copy-btn:active { transform: scale(0.95); }
+  .payload-section { border-top:1px solid #1f2937; margin-top:12px; padding-top:12px; }
+  .scroll-box { max-height:260px; overflow-y:auto; scrollbar-width:thin; scrollbar-color:#374151 transparent; }
+  .color-swatch { width:28px; height:28px; border-radius:5px; border:1px solid rgba(255,255,255,.08); display:inline-block; flex-shrink:0; }
+  .gradient-progress { height:3px; background:linear-gradient(90deg,#7c3aed,#ec4899); border-radius:2px; transition: width .6s ease; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+
+  <!-- Header -->
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <a href="{% url 'core:project_detail' project.pk %}" class="text-gray-500 hover:text-gray-300 text-sm">← Volver al proyecto</a>
+      <h1 class="text-2xl font-extrabold text-gray-100 mt-2">
+        <span class="gradient-text">Fábrica 16</span> · {{ project.title|default:project.niche_input|truncatechars:50 }}
+      </h1>
+      <p class="text-gray-400 text-sm mt-1">Mercados activos: {{ target_markets_label }} · Voz de marca: {{ project.brand_voice }}</p>
+    </div>
+    <div class="flex gap-3 items-center">
+      <div class="bg-gray-900 border border-gray-700 rounded-xl px-4 py-2 text-center min-w-[80px]">
+        <div class="text-2xl font-extrabold gradient-text">{{ done_count }}<span class="text-gray-600 text-base font-normal">/{{ total_count }}</span></div>
+        <div class="text-gray-500 text-xs">completados</div>
+      </div>
+      <button onclick="startPlanATestRun({{ project.pk }})" id="plan-a-run-btn"
+        class="text-sm bg-emerald-700 hover:bg-emerald-600 text-white font-bold px-4 py-2.5 rounded-xl transition-colors">
+        ▶ Lanzar Testeo
+      </button>
+    </div>
+  </div>
+
+  <!-- Progress bar + chips -->
+  <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-6">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs text-gray-400">Progreso del workflow</span>
+      <span class="text-xs font-bold text-violet-400">{{ done_count }} de {{ total_count }} módulos listos</span>
+    </div>
+    <div class="bg-gray-800 rounded-full h-1.5 overflow-hidden">
+      <div class="gradient-progress" style="width:{% widthratio done_count total_count 100 %}%"></div>
+    </div>
+    <div class="mt-3 flex flex-wrap gap-2">
+      {% for item in plan_a_features %}
+        <span class="text-[11px] px-2 py-0.5 rounded-full border
+          {% if item.done %}border-emerald-700 bg-emerald-950/40 text-emerald-400
+          {% else %}border-gray-700 bg-gray-900 text-gray-500{% endif %}">
+          {% if item.done %}✓{% else %}○{% endif %} {{ item.label }}
+        </span>
+      {% endfor %}
+    </div>
+    {% if last_test_run %}
+    <p class="text-[11px] text-gray-500 mt-2">
+      Último test run: #{{ last_test_run.pk }} · {{ last_test_run.status }} · generados: {{ last_test_run.generated_count }}
+    </p>
+    {% endif %}
+  </div>
+
+  <!-- Feature Grid (16 cards) -->
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+
+    {# ── 01 MODELADO DE OFERTA ── #}
+    {% with f=features.0 %}
+    <div class="feature-card bg-gray-900 border {% if f.status == 'done' %}done-card{% else %}border-gray-800{% endif %} rounded-2xl p-4" id="card-{{ f.key }}">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🎯</span>
+          <div>
+            <span class="text-gray-600 text-[10px] font-mono">01</span>
+            <h3 class="text-gray-100 font-bold text-sm leading-tight">{{ f.name }}</h3>
+          </div>
+        </div>
+        <span class="text-[11px] px-2 py-0.5 rounded-full {% if f.status == 'done' %}badge-done{% else %}badge-pending{% endif %}">
+          {% if f.status == 'done' %}✓ done{% else %}pendiente{% endif %}
+        </span>
+      </div>
+      <p class="text-[11px] text-gray-500 mb-3">Tu oferta irresistible antes de gastar un dólar en ads. Multi-mercado LATAM, manejo de objeciones y estrategia de precios.</p>
+      {% if offer_structure %}
+        <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 scroll-box text-xs text-gray-300 space-y-2">
+          {% if offer_structure.product_name %}<div><span class="text-violet-400 font-semibold">Producto:</span> {{ offer_structure.product_name }}</div>{% endif %}
+          {% if offer_structure.tagline %}<div><span class="text-violet-400 font-semibold">Tagline:</span> <em>{{ offer_structure.tagline }}</em></div>{% endif %}
+          {% if offer_structure.value_proposition %}<div class="text-gray-400">{{ offer_structure.value_proposition|truncatechars:180 }}</div>{% endif %}
+          {% if offer_structure.price_points %}
+            <div class="flex flex-wrap gap-1 mt-1">
+              {% for pp in offer_structure.price_points %}<span class="bg-gray-800 border border-gray-700 px-2 py-0.5 rounded text-[11px]">{{ pp.label|default:"" }} <strong class="text-emerald-400">${{ pp.price|default:"" }}</strong></span>{% endfor %}
+            </div>
+          {% endif %}
+        </div>
+        <a href="{% url 'core:project_detail' project.pk %}" class="mt-2 block w-full text-center text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-1.5 rounded-lg">Ver detalle completo →</a>
+      {% else %}
+        <a href="{% url 'core:project_detail' project.pk %}" class="block w-full text-center text-xs bg-violet-700 hover:bg-violet-600 text-white font-semibold py-2 rounded-lg">Crear oferta en el proyecto →</a>
+      {% endif %}
+    </div>
+    {% endwith %}
+
+    {# ── 02 INVESTIGACIÓN DE MERCADO ── #}
+    {% with f=features.1 %}
+    <div class="feature-card bg-gray-900 border {% if f.status == 'done' %}done-card{% else %}border-gray-800{% endif %} rounded-2xl p-4" id="card-{{ f.key }}">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🔬</span>
+          <div>
+            <span class="text-gray-600 text-[10px] font-mono">02</span>
+            <h3 class="text-gray-100 font-bold text-sm leading-tight">{{ f.name }}</h3>
+          </div>
+        </div>
+        <span class="text-[11px] px-2 py-0.5 rounded-full {% if f.status == 'done' %}badge-done{% else %}badge-pending{% endif %}">
+          {% if f.status == 'done' %}✓ done{% else %}pendiente{% endif %}
+        </span>
+      </div>
+      <p class="text-[11px] text-gray-500 mb-3">Deep research con IA: dolores reales, deseos, objeciones, benchmarks de precios y oportunidades ocultas del nicho.</p>
+      {% if niche_analysis %}
+        <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 scroll-box text-xs text-gray-300 space-y-2">
+          {% if niche_analysis.avatar_name %}<div><span class="text-emerald-400 font-semibold">Avatar:</span> {{ niche_analysis.avatar_name }}</div>{% endif %}
+          {% if niche_analysis.pains %}
+            <div><span class="text-red-400 font-semibold">🩸 Dolores:</span>
+              <ul class="mt-1 space-y-0.5">{% for p in niche_analysis.pains|slice:":3" %}<li class="text-gray-400">· {{ p }}</li>{% endfor %}</ul>
+            </div>
+          {% endif %}
+          {% if niche_analysis.desires %}
+            <div><span class="text-yellow-400 font-semibold">⭐ Deseos:</span>
+              <ul class="mt-1 space-y-0.5">{% for d in niche_analysis.desires|slice:":3" %}<li class="text-gray-400">· {{ d }}</li>{% endfor %}</ul>
+            </div>
+          {% endif %}
+          {% if niche_analysis.objections %}
+            <div><span class="text-orange-400 font-semibold">⚡ Objeciones:</span>
+              <ul class="mt-1 space-y-0.5">{% for o in niche_analysis.objections|slice:":2" %}<li class="text-gray-400">· {{ o }}</li>{% endfor %}</ul>
+            </div>
+          {% endif %}
+        </div>
+        <a href="{% url 'core:project_detail' project.pk %}" class="mt-2 block w-full text-center text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-1.5 rounded-lg">Ver análisis completo →</a>
+      {% else %}
+        <a href="{% url 'core:project_detail' project.pk %}" class="block w-full text-center text-xs bg-violet-700 hover:bg-violet-600 text-white font-semibold py-2 rounded-lg">Generar en el proyecto →</a>
+      {% endif %}
+    </div>
+    {% endwith %}
+
+    {# ── 03 AVATARES & BUYER PERSONA ── #}
+    {% with f=features.2 %}
+    <div class="feature-card bg-gray-900 border {% if f.status == 'done' %}done-card{% else %}border-gray-800{% endif %} rounded-2xl p-4" id="card-{{ f.key }}">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">👥</span>
+          <div>
+            <span class="text-gray-600 text-[10px] font-mono">03</span>
+            <h3 class="text-gray-100 font-bold text-sm leading-tight">{{ f.name }}</h3>
+          </div>
+        </div>
+        <span class="text-[11px] px-2 py-0.5 rounded-full {% if f.status == 'done' %}badge-done{% else %}badge-pending{% endif %}" id="badge-buyer_persona">
+          {% if f.status == 'done' %}✓ done{% else %}pendiente{% endif %}
+        </span>
+      </div>
+      <p class="text-[11px] text-gray-500 mb-3">4 perfiles ultra-detallados con hooks de venta, ángulos emocionales, objeciones y el mensaje exacto que los hace comprar.</p>
+      <button onclick="generateAvatars({{ project.pk }})" id="btn-buyer_persona"
+        class="w-full text-xs bg-violet-700 hover:bg-violet-600 disabled:opacity-50 text-white font-semibold py-2 rounded-lg mb-2 transition-colors">
+        {% if f.status == 'done' %}↻ Regenerar avatares{% else %}⚡ Generar avatares con IA{% endif %}
+      </button>
+      <div id="loading-buyer_persona" class="hidden mb-2">
+        <div class="bg-gray-700 rounded-full h-1 overflow-hidden"><div class="h-full bg-violet-500 animate-pulse w-1/2"></div></div>
+        <p class="text-[11px] text-gray-500 mt-1">Analizando mercado y generando perfiles...</p>
+      </div>
+      <div id="avatar-display">
+        {% if avatar_profile and avatar_profile.avatars %}
+          <div class="space-y-2 scroll-box">
+            {% for av in avatar_profile.avatars %}
+            <div class="bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs">
+              <div class="flex items-center justify-between mb-1">
+                <span class="font-bold text-gray-100">{{ av.name }}</span>
+                <span class="text-gray-500 text-[10px]">{{ av.age_range }} · {{ av.location }}</span>
+              </div>
+              <p class="text-gray-400 mb-1">{{ av.occupation }}</p>
+              <div class="text-red-400">🎯 {{ av.main_pain }}</div>
+              {% if av.purchase_trigger %}<div class="text-emerald-400 mt-0.5">⚡ {{ av.purchase_trigger }}</div>{% endif %}
+              {% if av.hooks %}
+                <div class="mt-1.5 space-y-0.5">
+                  {% for h in av.hooks %}<div class="bg-gray-900 px-2 py-1 rounded text-[11px] text-gray-300">"{{ h }}"</div>{% endfor %}
+                </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% if avatar_profile.buyer_persona_summary %}
+            <div class="mt-2 bg-violet-900/20 border border-violet-800/40 rounded-xl p-2.5 text-xs text-violet-300">{{ avatar_profile.buyer_persona_summary }}</div>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+    {% endwith %}
+
+    {# ── FEATURES 04 - 16 (artifact-based + native) ── #}
+    {% for f in features|slice:"3:" %}
+    {% with num=forloop.counter|add:3 %}
+    <div class="feature-card bg-gray-900 border {% if f.status == 'done' %}done-card{% else %}border-gray-800{% endif %} rounded-2xl p-4" id="card-{{ f.key }}">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">
+            {% if f.key == 'angles' %}⚔️
+            {% elif f.key == 'visual_identity' %}🎨
+            {% elif f.key == 'mockups' %}🖼️
+            {% elif f.key == 'ads_generator' %}📢
+            {% elif f.key == 'nano_banana_ads' %}🍌
+            {% elif f.key == 'offer_visual_model' %}💎
+            {% elif f.key == 'landing_page' %}🚀
+            {% elif f.key == 'product_copies' %}✍️
+            {% elif f.key == 'ad_copies' %}📋
+            {% elif f.key == 'premium_scripts' %}🎬
+            {% elif f.key == 'ugc_realistic' %}📱
+            {% elif f.key == 'product_generator' %}📦
+            {% elif f.key == 'upsell_aov' %}💰
+            {% elif f.key == 'email_marketing' %}📧
+            {% elif f.key == 'global_export' %}🌎
+            {% else %}⚡{% endif %}
+          </span>
+          <div>
+            <span class="text-gray-600 text-[10px] font-mono">{{ num|stringformat:"02d" }}</span>
+            <h3 class="text-gray-100 font-bold text-sm leading-tight">{{ f.name }}</h3>
+          </div>
+        </div>
+        <span class="text-[11px] px-2 py-0.5 rounded-full {% if f.status == 'done' %}badge-done{% else %}badge-pending{% endif %}" id="badge-{{ f.key }}">
+          {% if f.status == 'done' %}✓ done{% else %}pendiente{% endif %}
+        </span>
+      </div>
+
+      <p class="text-[11px] text-gray-500 mb-3">
+        {% if f.key == 'angles' %}7 ángulos con hook feed/stories, sub-ángulos, objeción que derriban y driver emocional.
+        {% elif f.key == 'visual_identity' %}Paleta HEX, tipografías Google, tagline, tono de voz y brief de logo listo para diseñador.
+        {% elif f.key == 'mockups' %}8 prompts de mockup fotorrealista listos para Midjourney/DALL-E con negatives y dimensiones.
+        {% elif f.key == 'ads_generator' %}8 creativos en formatos (Before/After, FAQ Visual, Us vs Them, Urgencia, Social Proof) con briefs.
+        {% elif f.key == 'nano_banana_ads' %}10 prompts de imagen ADS ultra-optimizados para Meta e Instagram con overlay de CTA.
+        {% elif f.key == 'offer_visual_model' %}Value stack, anclas de precio, objeciones pre-resueltas, garantía y copy de urgencia.
+        {% elif f.key == 'landing_page' %}10 secciones completas de copy + snippet HTML del Hero listo para Shopify / WordPress.
+        {% elif f.key == 'product_copies' %}5 variantes: emocional, racional, urgencia, social proof y método PAS.
+        {% elif f.key == 'ad_copies' %}Feed (3), Stories (3), Long form (2), 5 headlines y 5 hooks de apertura.
+        {% elif f.key == 'premium_scripts' %}8 guiones: hook 15s, 60s×2, 90s×2, demo, testimonial y objeción.
+        {% elif f.key == 'ugc_realistic' %}6 prompts UGC ultra-realistas para Sora, VEO 3, Kling y Runway con shotlist.
+        {% elif f.key == 'product_generator' %}Estructura del infoproducto: capítulos, módulos, títulos y tabla de contenidos.
+        {% elif f.key == 'upsell_aov' %}Estrategia de revenue: upsells, downsells, bundles y aumento de ticket promedio.
+        {% elif f.key == 'email_marketing' %}8 emails: carrito abandonado (2), lanzamiento (3), nurturing (2) y reactivación.
+        {% elif f.key == 'global_export' %}Guía en 8 secciones: legal, pagos, fiscalidad, IP y adaptación cultural por país.
+        {% else %}Módulo generado con IA.{% endif %}
+      </p>
+
+      {% if f.source == 'artifact' %}
+        <button onclick="generateFactoryArtifact({{ project.pk }}, '{{ f.key }}')"
+          id="btn-{{ f.key }}"
+          class="w-full text-xs bg-violet-700 hover:bg-violet-600 disabled:opacity-50 text-white font-semibold py-2 rounded-lg transition-colors mb-2">
+          {% if f.status == 'done' %}↻ Regenerar{% else %}⚡ Generar con IA{% endif %}
+        </button>
+
+        <div id="loading-{{ f.key }}" class="hidden mb-2">
+          <div class="bg-gray-700 rounded-full h-1 overflow-hidden"><div class="h-full bg-violet-500 animate-pulse w-1/2"></div></div>
+          <p class="text-[11px] text-gray-500 mt-1">Generando con IA, puede tardar 15-30 seg...</p>
+        </div>
+
+        {# Server-side rendered output (on page load if artifact exists) #}
+        {% if f.artifact and f.artifact.payload %}
+        <div id="output-{{ f.key }}" class="payload-section" data-payload-key="{{ f.key }}">
+          <div id="rendered-{{ f.key }}"><!-- populated by initRendered() on load --></div>
+          <button onclick="copyPayload('{{ f.key }}')"
+            class="copy-btn mt-2 w-full text-[11px] text-gray-500 hover:text-gray-300 border border-gray-800 hover:border-gray-600 py-1 rounded-lg"
+            id="copy-{{ f.key }}">⎘ Copiar JSON completo</button>
+        </div>
+        <script>window.__payload_{{ f.key|slugify|cut:"-" }} = {{ f.artifact.payload|safe }};</script>
+        {% else %}
+        <div id="output-{{ f.key }}" class="hidden payload-section"><div id="rendered-{{ f.key }}"></div></div>
+        {% endif %}
+
+      {% else %}
+        {# Native feature #}
+        <div class="text-xs text-gray-400 bg-gray-800/60 border border-gray-700 rounded-lg px-3 py-2 mb-2">
+          {% if f.key == 'product_generator' %}Redacta capítulos en el editor del proyecto.
+          {% elif f.key == 'upsell_aov' %}Configura upsells en Revenue Management.
+          {% else %}Módulo nativo del flujo principal.{% endif %}
+        </div>
+        {% if f.key == 'product_generator' %}
+          <a href="{% url 'core:project_detail' project.pk %}" class="block w-full text-center text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 font-semibold py-1.5 rounded-lg">Ir al editor →</a>
+        {% elif f.key == 'upsell_aov' %}
+          {% if revenue_strategy %}
+            <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 text-xs text-gray-300 scroll-box">
+              {% if revenue_strategy.upsells %}<div class="text-violet-400 font-semibold mb-1">Upsells</div>{% for u in revenue_strategy.upsells|slice:":2" %}<div class="mb-1">· {{ u }}</div>{% endfor %}{% endif %}
+              {% if revenue_strategy.average_order_value %}<div class="mt-1 text-emerald-400">AOV objetivo: ${{ revenue_strategy.average_order_value }}</div>{% endif %}
+            </div>
+          {% else %}
+            <a href="{% url 'core:project_detail' project.pk %}" class="block w-full text-center text-xs bg-violet-700 hover:bg-violet-600 text-white font-semibold py-2 rounded-lg">Generar strategy →</a>
+          {% endif %}
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endwith %}
+    {% endfor %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+// ── Helpers ────────────────────────────────────────────────────────
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function card(content) { return `<div class="bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs mb-2">${content}</div>`; }
+function lbl(label, val, cls='text-violet-400') {
+  return val ? `<div class="mb-1"><span class="${cls} font-semibold text-[10px] uppercase">${label}:</span> <span class="text-gray-300 text-[11px]">${val}</span></div>` : '';
+}
+function cpbtn(text, id) {
+  const safeTxt = encodeURIComponent(text);
+  return `<button onclick="copyURI('${safeTxt}','${id}')" class="copy-btn text-[10px] text-gray-500 hover:text-emerald-400 border border-gray-700 px-1.5 rounded mt-1" id="${id}">⎘ Copiar</button>`;
+}
+function copyURI(encoded, btnId) {
+  navigator.clipboard.writeText(decodeURIComponent(encoded)).then(() => {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copiado';
+    btn.classList.add('text-emerald-400');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('text-emerald-400'); }, 2000);
+  });
+}
+function copyPayload(key) {
+  const safeKey = key.replace(/-/g,'');
+  const payload = window[`__payload_${safeKey}`];
+  if (payload) {
+    navigator.clipboard.writeText(JSON.stringify(payload, null, 2)).then(() => {
+      const btn = document.getElementById(`copy-${key}`);
+      if (!btn) return;
+      btn.textContent = '✓ JSON copiado';
+      setTimeout(() => { btn.textContent = '⎘ Copiar JSON completo'; }, 2000);
+    });
+  }
+}
+
+// ── Render artifact by type ────────────────────────────────────────
+function renderArtifact(key, p) {
+  if (!p) return '<p class="text-xs text-gray-500">Sin datos.</p>';
+  try {
+    switch(key) {
+      case 'angles': return renderAngles(p);
+      case 'visual_identity': return renderVisualIdentity(p);
+      case 'mockups': return renderMockups(p);
+      case 'ads_generator': return renderAds(p);
+      case 'nano_banana_ads': return renderNanoBanana(p);
+      case 'offer_visual_model': return renderOfferModel(p);
+      case 'landing_page': return renderLanding(p);
+      case 'product_copies': return renderProductCopies(p);
+      case 'ad_copies': return renderAdCopies(p);
+      case 'premium_scripts': return renderScripts(p);
+      case 'ugc_realistic': return renderUGC(p);
+      case 'product_bonus_pack': return renderBonusPack(p);
+      case 'email_marketing': return renderEmails(p);
+      case 'global_export': return renderGlobalExport(p);
+      default: return `<pre class="text-[11px] text-gray-300 scroll-box whitespace-pre-wrap">${esc(JSON.stringify(p, null, 2))}</pre>`;
+    }
+  } catch(e) {
+    return `<pre class="text-[11px] text-gray-400 scroll-box whitespace-pre-wrap">${esc(JSON.stringify(p, null, 2))}</pre>`;
+  }
+}
+
+// Initialize rendered output for already-generated artifacts on page load
+function initRendered() {
+  document.querySelectorAll('[data-payload-key]').forEach(el => {
+    const key = el.dataset.payloadKey;
+    const safeKey = key.replace(/-/g,'');
+    const payload = window[`__payload_${safeKey}`];
+    if (payload) {
+      const renderedEl = document.getElementById(`rendered-${key}`);
+      if (renderedEl) renderedEl.innerHTML = renderArtifact(key, payload);
+    }
+  });
+}
+
+// ── Individual render functions ────────────────────────────────────
+function renderAngles(p) {
+  return `<div class="scroll-box space-y-2">${(p.angles||[]).map((a,i) => card(`
+    <div class="flex items-center justify-between mb-1">
+      <span class="font-bold text-gray-100 text-[11px]">${i+1}. ${esc(a.name||'')}</span>
+      <span class="text-[10px] px-1.5 py-0.5 rounded-full ${a.test_priority==='high'?'bg-red-900/50 text-red-400 border border-red-800':'bg-gray-700 text-gray-500'}">${esc(a.test_priority||'')}</span>
+    </div>
+    ${a.hook_feed?`<div class="text-yellow-300 text-[11px] mb-0.5">Feed: <em>"${esc(a.hook_feed)}"</em></div>`:''}
+    ${a.hook_stories?`<div class="text-yellow-200 text-[11px] mb-0.5">Stories: <em>"${esc(a.hook_stories)}"</em></div>`:''}
+    ${a.sub_angles&&a.sub_angles.length?`<div class="text-gray-500 text-[10px] mt-1">${a.sub_angles.map(s=>`· ${esc(s)}`).join('<br>')}</div>`:''}
+    ${lbl('Derriba',a.objection_destroyed,'text-red-400')}
+    ${lbl('Driver',a.emotional_driver,'text-pink-400')}
+    ${lbl('Mejor avatar',a.best_avatar,'text-sky-400')}
+  `)
+  ).join('')}</div>`;
+}
+
+function renderVisualIdentity(p) {
+  const swatches = (p.palette||[]).map(c => `
+    <div class="flex items-center gap-2 mb-1.5">
+      <span class="color-swatch" style="background:${esc(c.hex||'#1a1a2e')}"></span>
+      <span class="font-mono text-[11px] text-gray-300">${esc(c.hex||'')}</span>
+      <span class="text-gray-400 text-[10px]">${esc(c.name||'')} — ${esc(c.use||'')}</span>
+    </div>`).join('');
+  const fonts = (p.fonts||[]).map(f =>
+    `<div class="mb-1 flex items-center gap-2">
+      <span class="text-violet-400 text-[10px] font-semibold">${esc(f.role||'')}:</span>
+      <span class="text-gray-200 font-bold text-[11px]">${esc(f.name||'')}</span>
+      ${f.google_url?`<a href="${esc(f.google_url)}" target="_blank" class="text-sky-500 text-[10px] hover:underline">↗ Google Fonts</a>`:''}
+    </div>`).join('');
+  return `<div class="scroll-box space-y-2">
+    ${p.tagline?card(`<div class="text-center text-sm font-bold text-gray-100 py-1 italic">"${esc(p.tagline)}"</div><div class="text-center text-[10px] text-gray-500 mt-0.5">Tagline</div>`):''}
+    ${swatches?card(`<div class="text-[10px] text-violet-400 font-bold uppercase tracking-wider mb-2">🎨 Paleta</div>${swatches}`):''}
+    ${fonts?card(`<div class="text-[10px] text-violet-400 font-bold uppercase tracking-wider mb-2">🔤 Tipografías</div>${fonts}`):''}
+    ${p.tone?card(lbl('Tono de Voz',p.tone,'text-emerald-400')):''}
+    ${p.logo_brief?card(lbl('Brief de Logo',p.logo_brief,'text-yellow-400')):''}
+    ${p.look_and_feel?card(lbl('Look & Feel',p.look_and_feel,'text-sky-400')):''}
+    ${p.dont_list&&p.dont_list.length?card(`<span class="text-red-400 text-[10px] font-bold uppercase">❌ Evitar:</span><div class="text-gray-400 mt-1 space-y-0.5 text-[10px]">${p.dont_list.map(d=>`<div>✗ ${esc(d)}</div>`).join('')}</div>`):''}
+  </div>`;
+}
+
+function renderMockups(p) {
+  return `<div class="scroll-box space-y-2">${(p.mockup_prompts||[]).map((m,i) => {
+    const pid = `mock-copy-${i}`;
+    return card(`
+      <div class="flex items-center justify-between mb-1">
+        <span class="font-bold text-gray-100 text-[11px]">${esc(m.title||m.format||`#${i+1}`)}</span>
+        <span class="text-[10px] text-gray-500 bg-gray-700 px-1.5 rounded">${esc(m.dimensions||'')}</span>
+      </div>
+      <div class="bg-gray-950 rounded-lg p-2 font-mono text-[11px] text-green-300">${esc(m.prompt||'')}</div>
+      ${m.negative_prompt?`<div class="text-[10px] text-red-400 mt-1">✗ Negative: ${esc(m.negative_prompt)}</div>`:''}
+      ${cpbtn(m.prompt||'',pid)}
+    `);
+  }).join('')}</div>`;
+}
+
+function renderAds(p) {
+  return `<div class="scroll-box space-y-2">${(p.creatives||[]).map((c,i) => card(`
+    <div class="flex items-center justify-between mb-1">
+      <span class="font-bold text-gray-100 text-[11px]">${esc(c.format||`Creativo ${i+1}`)}</span>
+      <div class="flex gap-1">
+        ${c.platform?`<span class="text-[10px] bg-gray-700 text-gray-400 px-1.5 rounded">${esc(c.platform)}</span>`:''}
+        ${c.dimensions?`<span class="text-[10px] bg-gray-700 text-gray-400 px-1.5 rounded">${esc(c.dimensions)}</span>`:''}
+      </div>
+    </div>
+    ${c.headline?`<div class="text-yellow-300 font-bold text-[11px] mb-1">${esc(c.headline)}</div>`:''}
+    ${lbl('Copy Overlay',c.copy_overlay,'text-emerald-400')}
+    ${lbl('Brief Visual',c.visual_brief,'text-gray-400')}
+    ${lbl('Por qué convierte',c.why_it_works,'text-sky-400')}
+    ${c.cta?`<span class="inline-block mt-1 bg-violet-800 text-white text-[10px] px-2 py-0.5 rounded">${esc(c.cta)}</span>`:''}
+  `)).join('')}</div>`;
+}
+
+function renderNanoBanana(p) {
+  return `${p.provider?`<div class="text-[10px] text-gray-500 mb-2">Proveedor: ${esc(p.provider)} · ~${p.estimated_seconds||60}s de gen.</div>`:''}
+  <div class="scroll-box space-y-2">${(p.assets||[]).map((a,i) => {
+    const pid = `nb-copy-${i}`;
+    return card(`
+      <div class="flex items-center justify-between mb-1">
+        <span class="font-bold text-gray-100 text-[11px]">${esc(a.format||`Asset ${i+1}`)}</span>
+        <span class="text-[10px] text-gray-500">${esc(a.best_for||'')} · ${esc(a.mood||'')}</span>
+      </div>
+      <div class="bg-gray-950 rounded-lg p-2 font-mono text-[11px] text-green-300">${esc(a.prompt||'')}</div>
+      ${a.cta_overlay?`<div class="text-violet-400 text-[10px] mt-1">CTA overlay: ${esc(a.cta_overlay)}</div>`:''}
+      ${cpbtn(a.prompt||'',pid)}
+    `);
+  }).join('')}</div>`;
+}
+
+function renderOfferModel(p) {
+  let vsHtml = '', total = 0;
+  (p.value_stack||[]).forEach(i => {
+    total += (i.value_usd||0);
+    vsHtml += `<div class="flex justify-between text-[11px] py-0.5 border-b border-gray-700"><span class="text-gray-300">${esc(i.item||'')}</span><span class="text-emerald-400 font-semibold">$${i.value_usd||0}</span></div>`;
+  });
+  const objHtml = (p.objections_resolved||[]).map(o => card(
+    `<div class="text-yellow-300 font-bold text-[11px]">${esc(o.objection||'')}</div><div class="text-gray-400 text-[10px] mt-1">${esc(o.response||'')}</div>`
+  )).join('');
+  return `<div class="scroll-box space-y-2">
+    ${p.transformation?card(`<div class="text-center font-bold text-sm text-gray-100">🎯 ${esc(p.transformation)}</div>`):''}
+    ${vsHtml?card(`<div class="text-[10px] text-violet-400 font-bold uppercase mb-2">💎 Value Stack</div>${vsHtml}
+      <div class="flex justify-between pt-1 text-[11px]"><span class="text-gray-500">Valor total</span><span class="text-gray-500 line-through">$${total}</span></div>
+      <div class="flex justify-between text-sm font-bold"><span class="text-emerald-400">Tu inversión</span><span class="text-emerald-400">$${p.your_price_usd||''}</span></div>`):''}
+    ${objHtml}
+    ${p.guarantee?card(`<div class="text-emerald-400 font-bold">✓ Garantía ${p.guarantee.days||7} días</div><div class="text-gray-300 text-[11px] mt-1">${esc(p.guarantee.copy||'')}</div>`):''}
+    ${p.urgency_copy?card(`<div class="text-orange-400 text-[11px]">⏰ ${esc(p.urgency_copy)}</div>`):''}
+  </div>`;
+}
+
+function renderLanding(p) {
+  const sHtml = (p.sections||[]).map(s => card(`
+    <div class="font-bold text-gray-100 text-[11px] mb-1">${esc(s.name||'')}</div>
+    ${s.headline?`<div class="text-yellow-300 text-[11px] mb-0.5">"${esc(s.headline)}"</div>`:''}
+    ${s.subheadline?`<div class="text-gray-400 text-[11px] mb-0.5">${esc(s.subheadline)}</div>`:''}
+    ${s.copy?`<div class="text-gray-500 text-[10px] border-t border-gray-700 pt-1 mt-1">${esc((s.copy||'').substring(0,160))}${(s.copy||'').length>160?'…':''}</div>`:''}
+    ${s.cta?`<span class="inline-block mt-1 bg-violet-800 text-white text-[10px] px-2 py-0.5 rounded">${esc(s.cta)}</span>`:''}
+  `)).join('');
+  const heroHtml = p.hero_html ? card(`
+    <div class="text-[10px] text-emerald-400 font-bold uppercase mb-1">HTML del Hero</div>
+    <pre class="text-[10px] text-gray-300 bg-gray-950 p-2 rounded overflow-x-auto max-h-24">${esc((p.hero_html||'').substring(0,400))}…</pre>
+    ${cpbtn(p.hero_html||'','landing-html-copy')}
+  `) : '';
+  return `<div class="scroll-box">${sHtml}${heroHtml}</div>`;
+}
+
+function renderProductCopies(p) {
+  return `<div class="scroll-box space-y-2">${(p.variants||[]).map((v,i) => {
+    const pid = `pcopy-${i}`;
+    return card(`
+      <div class="flex items-center justify-between mb-1">
+        <span class="font-bold text-gray-100 capitalize text-[11px]">${esc(v.style||`Variante ${i+1}`)}</span>
+        ${cpbtn(v.copy||'',pid)}
+      </div>
+      ${v.headline?`<div class="text-yellow-300 font-bold text-[11px] mb-1">${esc(v.headline)}</div>`:''}
+      <div class="text-gray-300 text-[11px] scroll-box max-h-24">${esc((v.copy||'').substring(0,300))}${(v.copy||'').length>300?'…':''}</div>
+      ${v.bullets&&v.bullets.length?`<ul class="mt-1.5 space-y-0.5">${v.bullets.map(b=>`<li class="text-emerald-400 text-[10px]">✓ ${esc(b)}</li>`).join('')}</ul>`:''}
+      ${v.cta?`<div class="mt-1 text-violet-400 text-[10px] font-semibold">CTA: ${esc(v.cta)}</div>`:''}
+    `);
+  }).join('')}</div>`;
+}
+
+function renderAdCopies(p) {
+  let html = '<div class="scroll-box space-y-2">';
+  const section = (label, cls, items) => {
+    if (!items||!items.length) return '';
+    return `<div class="text-[10px] font-bold uppercase tracking-wider ${cls} mb-1 mt-2">${label}</div>` +
+      items.map((c,i) => {
+        const txt = c.copy||c||'';
+        const pid = `adc-${label.substring(0,3)}-${i}`;
+        return card(`<div class="text-gray-300 text-[11px]">${esc(txt.substring(0,200))}${txt.length>200?'…':''}</div>${cpbtn(txt,pid)}`);
+      }).join('');
+  };
+  html += section('Feed (3)','text-violet-400', p.feed_copies);
+  html += section('Stories','text-pink-400', p.stories_copies);
+  html += section('Long form','text-sky-400', p.long_form_copies);
+  if (p.hook_openers&&p.hook_openers.length) {
+    html += `<div class="text-[10px] font-bold uppercase tracking-wider text-yellow-400 mt-2 mb-1">⚡ Hooks de apertura</div>`;
+    html += card(`<div class="space-y-1">${p.hook_openers.map((h,i)=>{
+      const pid=`hk-${i}`;
+      return `<div class="flex items-start gap-1"><span class="text-yellow-400">⚡</span><span class="text-gray-300 text-[11px] flex-1">${esc(h)}</span>${cpbtn(h,pid)}</div>`;
+    }).join('')}</div>`);
+  }
+  if (p.headline_variations&&p.headline_variations.length) {
+    html += `<div class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 mt-2 mb-1">Headlines</div>`;
+    html += card(`<div class="space-y-1">${p.headline_variations.map((h,i)=>{
+      const pid=`hl-${i}`;
+      return `<div class="flex items-start gap-1 border-b border-gray-700 pb-1"><span class="text-gray-300 text-[11px] flex-1">${esc(h)}</span>${cpbtn(h,pid)}</div>`;
+    }).join('')}</div>`);
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderScripts(p) {
+  return `<div class="scroll-box space-y-2">${(p.scripts||[]).map((s,i) => {
+    const pid = `script-${i}`;
+    return card(`
+      <div class="flex items-center justify-between mb-1">
+        <span class="font-bold text-gray-100 text-[11px]">${esc(s.title||s.type||`Guión ${i+1}`)}</span>
+        <span class="text-[10px] text-gray-500 bg-gray-700 px-1.5 rounded">${esc(s.duration||'')}</span>
+      </div>
+      ${s.hook_line?`<div class="text-yellow-300 italic text-[11px] mb-1">"${esc(s.hook_line)}"</div>`:''}
+      <div class="bg-gray-950 rounded-lg p-2 text-[11px] text-gray-300 max-h-28 overflow-y-auto">${esc((s.script||'').substring(0,400))}${(s.script||'').length>400?'…':''}</div>
+      ${s.voice_tone?`<div class="text-sky-400 text-[10px] mt-1">🎙 Tono: ${esc(s.voice_tone)}</div>`:''}
+      ${s.camera_notes?`<div class="text-gray-500 text-[10px]">📷 ${esc(s.camera_notes)}</div>`:''}
+      ${cpbtn(s.script||'',pid)}
+    `);
+  }).join('')}</div>`;
+}
+
+function renderUGC(p) {
+  return `<div class="scroll-box space-y-2">${(p.ugc_prompts||[]).map((u,i) => {
+    const pid = `ugc-${i}`;
+    return card(`
+      <div class="flex items-center justify-between mb-1">
+        <span class="font-bold text-gray-100 text-[11px]">${esc(u.type||`UGC ${i+1}`)}</span>
+        <span class="text-[10px] bg-gray-700 px-1.5 rounded text-gray-400">${esc(u.tool||'')}</span>
+      </div>
+      ${u.creator_profile?`<div class="text-violet-300 text-[10px] mb-1">👤 ${esc(u.creator_profile)}</div>`:''}
+      <div class="bg-gray-950 rounded-lg p-2 font-mono text-[11px] text-green-300">${esc(u.prompt||'')}</div>
+      ${u.shotlist&&u.shotlist.length?`<div class="text-gray-500 text-[10px] mt-1">${u.shotlist.map((s,j)=>`${j+1}. ${esc(s)}`).join(' | ')}</div>`:''}
+      ${u.audio_note?`<div class="text-[10px] text-sky-400 mt-0.5">🎵 ${esc(u.audio_note)}</div>`:''}
+      ${cpbtn(u.prompt||'',pid)}
+    `);
+  }).join('')}</div>`;
+}
+
+function renderBonusPack(p) {
+  const mp = p.main_product||{};
+  const toc = (mp.table_of_contents||[]).map((c,i)=>`<li class="text-gray-400 text-[10px]">${i+1}. ${esc(c)}</li>`).join('');
+  const bonuses = (p.bonuses||[]).map((b,i) => card(`
+    <div class="flex items-center justify-between mb-1">
+      <span class="font-bold text-gray-100 text-[11px]">Bonus ${i+1}: ${esc(b.name||'')}</span>
+      <span class="text-[10px] text-emerald-400">+$${b.perceived_value_usd||0}</span>
+    </div>
+    <div class="text-gray-400 text-[11px]">${esc(b.benefit||'')}</div>
+    <div class="text-[10px] text-violet-400 mt-0.5">Formato: ${esc(b.format||'')}</div>
+    ${b.why_complementary?`<div class="text-[10px] text-gray-500 mt-0.5">↳ ${esc(b.why_complementary)}</div>`:''}
+  `)).join('');
+  return `<div class="scroll-box space-y-2">
+    ${card(`<div class="font-bold text-gray-100 mb-1">📦 ${esc(mp.name||'Producto principal')}</div>
+      <div class="text-yellow-300 text-[11px] mb-2">${esc(mp.promise||'')}</div>
+      ${toc?`<ol class="space-y-0.5">${toc}</ol>`:''}
+      ${mp.deliverables&&mp.deliverables.length?`<div class="mt-1 text-[10px] text-violet-400">${mp.deliverables.map(d=>esc(d)).join(' · ')}</div>`:''}`)}
+    <div class="text-[10px] font-bold text-violet-400 uppercase tracking-wider mt-1 mb-1">🎁 Bonuses</div>
+    ${bonuses}
+    ${p.total_perceived_value_usd?card(`<div class="text-center font-bold text-emerald-400">Valor total percibido: $${p.total_perceived_value_usd} USD</div>`):''}
+  </div>`;
+}
+
+function renderEmails(p) {
+  const typeCls = t => ({
+    abandoned_1h:'bg-red-900/40 text-red-400 border-red-800', abandoned_24h:'bg-red-900/40 text-red-400 border-red-800',
+    launch_pre:'bg-violet-900/40 text-violet-400 border-violet-800', launch_open:'bg-violet-900/40 text-violet-400 border-violet-800',
+    launch_last:'bg-orange-900/40 text-orange-400 border-orange-800', nurture_welcome:'bg-emerald-900/40 text-emerald-400 border-emerald-800',
+    nurture_day3:'bg-emerald-900/40 text-emerald-400 border-emerald-800', reactivation:'bg-sky-900/40 text-sky-400 border-sky-800'
+  })[t]||'bg-gray-800 text-gray-400 border-gray-700';
+  return `<div class="scroll-box space-y-2">${(p.emails||[]).map((e,i) => {
+    const pid = `email-${i}`;
+    return card(`
+      <div class="flex items-start justify-between mb-1 gap-2">
+        <span class="font-bold text-gray-100 text-[11px] flex-1">✉ ${esc(e.subject||'')}</span>
+        <span class="text-[10px] px-1.5 py-0.5 rounded-full border ${typeCls(e.type)} whitespace-nowrap">${esc(e.type||'')}</span>
+      </div>
+      ${e.preview_text?`<div class="text-gray-400 text-[10px] italic mb-1">${esc(e.preview_text)}</div>`:''}
+      ${e.send_timing?`<div class="text-sky-400 text-[10px]">⏰ ${esc(e.send_timing)}</div>`:''}
+      <div class="bg-gray-950 rounded-lg p-2 text-[11px] text-gray-300 max-h-24 overflow-y-auto mt-1">${esc((e.body||'').substring(0,280))}…</div>
+      ${e.cta_text?`<span class="inline-block mt-1 bg-violet-800 text-white text-[10px] px-2 py-0.5 rounded">${esc(e.cta_text)}</span>`:''}
+      ${cpbtn(e.body||'',pid)}
+    `);
+  }).join('')}</div>`;
+}
+
+function renderGlobalExport(p) {
+  const ico = t=>({legal:'⚖️',payments:'💳',taxes:'📑',ip:'🔏',copy_adaptation:'🌎',pricing:'💲',tools:'🛠️',checklist:'✅'})[t]||'📄';
+  return `<div class="scroll-box space-y-2">${(p.sections||[]).map(s => card(`
+    <div class="font-bold text-gray-100 text-[11px] mb-1">${ico(s.topic)} ${esc(s.title||s.topic||'')}</div>
+    <div class="text-gray-400 text-[11px] mb-2">${esc(s.summary||'')}</div>
+    ${s.key_points&&s.key_points.length?`<ul class="space-y-0.5">${s.key_points.map(k=>`<li class="text-[10px] text-sky-300">· ${esc(k)}</li>`).join('')}</ul>`:''}
+    ${s.actions&&s.actions.length?`<div class="mt-1.5 space-y-0.5">${s.actions.map(a=>`<div class="text-[10px] text-emerald-400">✓ ${esc(a)}</div>`).join('')}</div>`:''}
+    ${s.markets_mentioned&&s.markets_mentioned.length?`<div class="mt-1 text-[10px] text-gray-500">Mercados: ${s.markets_mentioned.map(m=>esc(m)).join(', ')}</div>`:''}
+  `)).join('')}</div>`;
+}
+
+// ── Generate Avatars ───────────────────────────────────────────────
+async function generateAvatars(pk) {
+  const btn = document.getElementById('btn-buyer_persona');
+  const loading = document.getElementById('loading-buyer_persona');
+  const display = document.getElementById('avatar-display');
+  const badge = document.getElementById('badge-buyer_persona');
+  const card_ = document.getElementById('card-buyer_persona');
+  btn.disabled = true; loading.classList.remove('hidden');
+  try {
+    const resp = await fetch(`/dashboard/api/generate/avatars/${pk}/`, {
+      method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'}
+    });
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error||'Error al generar');
+    renderAvatarsUI(data.avatars, data.summary);
+    badge.innerHTML = '✓ done'; badge.className = 'text-[11px] px-2 py-0.5 rounded-full badge-done';
+    btn.textContent = '↻ Regenerar avatares';
+    card_.classList.remove('border-gray-800'); card_.classList.add('done-card');
+  } catch(err) { alert(err.message); }
+  finally { btn.disabled = false; loading.classList.add('hidden'); }
+}
+
+function renderAvatarsUI(avatars, summary) {
+  const display = document.getElementById('avatar-display');
+  let html = '<div class="space-y-2 scroll-box">';
+  (avatars||[]).forEach(av => {
+    const hooks = (av.hooks||[]).map(h=>`<div class="bg-gray-900 px-2 py-1 rounded text-[11px] text-gray-300">"${esc(h)}"</div>`).join('');
+    const objs = (av.objections||[]).length ? `<div class="text-yellow-400 text-[10px] mt-0.5">Objeciones: ${av.objections.map(o=>esc(o)).join(' · ')}</div>` : '';
+    html += `<div class="bg-gray-800 border border-gray-700 rounded-xl p-3 text-xs">
+      <div class="flex items-center justify-between mb-1">
+        <span class="font-bold text-gray-100">${esc(av.name||'')}</span>
+        <span class="text-gray-500 text-[10px]">${esc(av.age_range||'')} · ${esc(av.location||'')}</span>
+      </div>
+      <p class="text-gray-400 mb-1 text-[11px]">${esc(av.occupation||'')}</p>
+      <div class="text-red-400 text-[11px]">🎯 ${esc(av.main_pain||'')}</div>
+      ${av.purchase_trigger?`<div class="text-emerald-400 text-[11px] mt-0.5">⚡ ${esc(av.purchase_trigger)}</div>`:''}
+      ${objs}
+      ${hooks?`<div class="mt-1.5 space-y-0.5">${hooks}</div>`:''}
+    </div>`;
+  });
+  html += '</div>';
+  if (summary) html += `<div class="mt-2 bg-violet-900/20 border border-violet-800/40 rounded-xl p-2.5 text-xs text-violet-300">${esc(summary)}</div>`;
+  display.innerHTML = html;
+}
+
+// ── Generate Factory Artifact ──────────────────────────────────────
+async function generateFactoryArtifact(pk, key) {
+  const btn = document.getElementById(`btn-${key}`);
+  const loading = document.getElementById(`loading-${key}`);
+  const outputEl = document.getElementById(`output-${key}`);
+  const renderedEl = document.getElementById(`rendered-${key}`);
+  const badge = document.getElementById(`badge-${key}`);
+  const cardEl = document.getElementById(`card-${key}`);
+  btn.disabled = true; loading.classList.remove('hidden');
+  try {
+    const resp = await fetch(`/dashboard/api/generate/factory/${pk}/${key}/`, {
+      method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'}
+    });
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error||'Error al generar');
+    const safeKey = key.replace(/-/g,'');
+    window[`__payload_${safeKey}`] = data.payload;
+    renderedEl.innerHTML = renderArtifact(key, data.payload);
+    outputEl.classList.remove('hidden');
+    // Add copy button if not already present
+    if (!document.getElementById(`copy-${key}`)) {
+      const cpBtn = document.createElement('button');
+      cpBtn.id = `copy-${key}`;
+      cpBtn.className = 'copy-btn mt-2 w-full text-[11px] text-gray-500 hover:text-gray-300 border border-gray-800 hover:border-gray-600 py-1 rounded-lg';
+      cpBtn.textContent = '⎘ Copiar JSON completo';
+      cpBtn.onclick = () => copyPayload(key);
+      outputEl.appendChild(cpBtn);
+    }
+    badge.innerHTML = '✓ done'; badge.className = 'text-[11px] px-2 py-0.5 rounded-full badge-done';
+    btn.textContent = '↻ Regenerar';
+    cardEl.classList.remove('border-gray-800'); cardEl.classList.add('done-card');
+  } catch(err) { alert(err.message); }
+  finally { btn.disabled = false; loading.classList.add('hidden'); }
+}
+
+// ── Plan A Test Run ────────────────────────────────────────────────
+async function startPlanATestRun(pk) {
+  const btn = document.getElementById('plan-a-run-btn');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Ejecutando...';
+  try {
+    const resp = await fetch(`/dashboard/api/plan-a/test-run/${pk}/start/`, {
+      method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'}
+    });
+    const data = await resp.json();
+    if (!data.success) throw new Error(data.error||'No se pudo iniciar el testeo');
+    window.location.reload();
+  } catch(err) { alert(err.message); btn.disabled = false; btn.textContent = orig; }
+}
+
+// Init on load
+document.addEventListener('DOMContentLoaded', initRendered);
+</script>
+{% endblock %}
