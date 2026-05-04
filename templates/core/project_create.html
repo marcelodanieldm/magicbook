@@ -14,6 +14,24 @@
     <a href="{% url 'core:dashboard' %}" class="text-gray-500 hover:text-gray-300 text-sm transition-colors">← Volver al dashboard</a>
   </div>
 
+  <div class="mb-8 bg-gray-900 border border-gray-800 rounded-2xl p-4">
+    <p class="text-xs uppercase tracking-wider text-violet-300 font-semibold mb-3">Happy path Plan A</p>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div class="bg-violet-900/20 border border-violet-700/40 rounded-lg px-3 py-2">
+        <p class="text-[11px] text-violet-300 font-semibold">Paso 1</p>
+        <p class="text-sm text-gray-200">Define nicho y mercado</p>
+      </div>
+      <div class="bg-gray-800/70 border border-gray-700 rounded-lg px-3 py-2">
+        <p class="text-[11px] text-gray-400 font-semibold">Paso 2</p>
+        <p class="text-sm text-gray-300">Genera estructura base</p>
+      </div>
+      <div class="bg-gray-800/70 border border-gray-700 rounded-lg px-3 py-2">
+        <p class="text-[11px] text-gray-400 font-semibold">Paso 3</p>
+        <p class="text-sm text-gray-300">Escala en Fábrica 16</p>
+      </div>
+    </div>
+  </div>
+
   <div class="text-center mb-10">
     <div class="text-5xl mb-4">🚀</div>
     <h1 class="text-3xl font-extrabold mb-3">¿Cuál es tu idea de infoproducto?</h1>
@@ -52,10 +70,14 @@
       <label class="block text-sm font-semibold text-gray-300 mb-3">
         Tu nicho o idea de infoproducto
       </label>
-      {{ form.niche_input }}
+      <div class="relative">
+        <div id="magic-box-suggestions" class="absolute -top-10 left-0 right-0 flex flex-wrap gap-2"></div>
+        {{ form.niche_input }}
+      </div>
       {% if form.niche_input.errors %}
         <p class="mt-2 text-red-400 text-sm">{{ form.niche_input.errors.0 }}</p>
       {% endif %}
+      <p class="mt-2 text-xs text-gray-500">Tip rápido: incluye público objetivo + problema principal + resultado que quiere lograr.</p>
     </div>
 
     <!-- Brand Voice Selector -->
@@ -67,9 +89,22 @@
         <label class="voice-card cursor-pointer border-2 rounded-xl p-3 transition-all
                        {% if forloop.first %}border-violet-500 bg-violet-900/20{% else %}border-gray-700 hover:border-gray-500{% endif %}">
           <input type="radio" name="brand_voice" value="{{ choice_val }}"
+                 data-tone="{% if choice_val == 'coach' %}rebel{% elif choice_val == 'mentor' %}sage{% elif choice_val == 'friend' %}friend{% else %}neutral{% endif %}"
                  class="sr-only"
                  {% if forloop.first %}checked{% endif %}>
-          <span class="text-sm font-medium text-gray-200">{{ choice_label }}</span>
+          <div class="flex items-start gap-3">
+            <span class="text-lg mt-0.5">
+              {% if choice_val == 'coach' %}⚡{% elif choice_val == 'mentor' %}📚{% elif choice_val == 'friend' %}☕{% elif choice_val == 'scientist' %}🔬{% else %}🏆{% endif %}
+            </span>
+            <div>
+              <span class="text-sm font-semibold text-gray-100 block">
+                {% if choice_val == 'coach' %}The Rebel{% elif choice_val == 'mentor' %}The Sage{% elif choice_val == 'friend' %}The Friend{% elif choice_val == 'scientist' %}The Analyst{% else %}The Authority{% endif %}
+              </span>
+              <span class="text-xs text-gray-500">
+                {% if choice_val == 'coach' %}Copia directa y agresiva para conversion{% elif choice_val == 'mentor' %}Copia educativa y estrategica{% elif choice_val == 'friend' %}Cercano, empatico y humano{% elif choice_val == 'scientist' %}Datos, logica y precision{% else %}Tono experto y contundente{% endif %}
+              </span>
+            </div>
+          </div>
         </label>
         {% endfor %}
       </div>
@@ -116,20 +151,109 @@
     </div>
 
     <button type="submit"
+            id="create-project-submit"
             class="w-full bg-violet-600 hover:bg-violet-700 glow text-white font-bold py-4 rounded-xl text-lg transition-all">
       Construir mi negocio con IA →
     </button>
-    <p class="text-center text-gray-600 text-xs mt-4">Plan A USD29/mes: workflow completo + multi-mercado + testeos escalables</p>
+    <p id="create-project-hint" class="text-center text-gray-600 text-xs mt-4">Plan A USD29/mes: workflow completo + multi-mercado + testeos escalables</p>
   </form>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+  const nicheTextarea = document.querySelector('textarea');
+  const submitBtn = document.getElementById('create-project-submit');
+  const submitHint = document.getElementById('create-project-hint');
+  const magicBoxSuggestions = document.getElementById('magic-box-suggestions');
+
+  const suggestionRules = [
+    {
+      match: /ebook|libro|capitulo/i,
+      label: '¿Quieres que sea un E-book técnico?',
+      append: ' en formato e-book técnico paso a paso',
+    },
+    {
+      match: /principiante|inicio|cero/i,
+      label: '¿Es para público principiante?',
+      append: ' para personas sin experiencia previa',
+    },
+    {
+      match: /ventas|ads|landing/i,
+      label: '¿Priorizamos conversión rápida?',
+      append: ' con foco en conversión de landing y anuncios',
+    },
+  ];
+
+  function renderFloatingSuggestions(value) {
+    if (!magicBoxSuggestions) return;
+    magicBoxSuggestions.innerHTML = '';
+    const base = value || '';
+    const rulesToShow = suggestionRules.filter((rule) => {
+      if (base.length < 12) return true;
+      return !rule.match.test(base);
+    }).slice(0, 3);
+
+    rulesToShow.forEach((rule) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'text-[11px] bg-zinc-900/90 border border-zinc-700 hover:border-indigo-500 text-zinc-300 hover:text-indigo-300 px-2 py-1 rounded-full transition-colors';
+      btn.textContent = rule.label;
+      btn.addEventListener('click', () => {
+        if (!nicheTextarea) return;
+        nicheTextarea.value = `${nicheTextarea.value.trim()}${rule.append}`.trim();
+        nicheTextarea.focus();
+        updateSubmitState();
+        renderFloatingSuggestions(nicheTextarea.value);
+      });
+      magicBoxSuggestions.appendChild(btn);
+    });
+  }
+
+  function applyBrandTone(tone) {
+    if (tone === 'rebel') {
+      document.documentElement.style.setProperty('--accent', '236, 72, 153');
+      document.documentElement.style.setProperty('--accent-soft', '244, 114, 182');
+    } else if (tone === 'sage') {
+      document.documentElement.style.setProperty('--accent', '124, 58, 237');
+      document.documentElement.style.setProperty('--accent-soft', '167, 139, 250');
+    } else if (tone === 'friend') {
+      document.documentElement.style.setProperty('--accent', '16, 185, 129');
+      document.documentElement.style.setProperty('--accent-soft', '110, 231, 183');
+    } else {
+      document.documentElement.style.setProperty('--accent', '124, 58, 237');
+      document.documentElement.style.setProperty('--accent-soft', '167, 139, 250');
+    }
+  }
+
+  function updateSubmitState() {
+    if (!nicheTextarea || !submitBtn || !submitHint) return;
+    const ready = nicheTextarea.value.trim().length >= 24;
+    submitBtn.disabled = !ready;
+    submitBtn.classList.toggle('opacity-50', !ready);
+    submitBtn.classList.toggle('cursor-not-allowed', !ready);
+    submitHint.textContent = ready
+      ? 'Listo para crear. Tiempo estimado para ver tu proyecto: menos de 15 segundos.'
+      : 'Escribe al menos una idea específica (24+ caracteres) para activar el botón.';
+  }
+
+  if (nicheTextarea) {
+    const seededIdea = localStorage.getItem('magicbook_seed_idea');
+    if (!nicheTextarea.value.trim() && seededIdea) {
+      nicheTextarea.value = seededIdea;
+      localStorage.removeItem('magicbook_seed_idea');
+    }
+    nicheTextarea.addEventListener('input', updateSubmitState);
+    nicheTextarea.addEventListener('input', () => renderFloatingSuggestions(nicheTextarea.value));
+    updateSubmitState();
+    renderFloatingSuggestions(nicheTextarea.value);
+  }
+
   document.querySelectorAll('.example-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelector('textarea').value = btn.dataset.example;
       document.querySelector('textarea').focus();
+      updateSubmitState();
     });
   });
 
@@ -142,8 +266,16 @@
       });
       card.classList.remove('border-gray-700');
       card.classList.add('border-violet-500', 'bg-violet-900/20');
+
+      const selectedTone = card.querySelector('input[type="radio"]')?.dataset.tone || 'neutral';
+      applyBrandTone(selectedTone);
     });
   });
+
+  const selectedToneInput = document.querySelector('#brand-voice-grid input[type="radio"]:checked');
+  if (selectedToneInput) {
+    applyBrandTone(selectedToneInput.dataset.tone || 'neutral');
+  }
 
   // Radio card selection highlight — model
   document.querySelectorAll('#model-grid .model-card').forEach(card => {

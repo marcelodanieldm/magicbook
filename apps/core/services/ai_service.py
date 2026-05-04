@@ -288,6 +288,58 @@ class AIService:
 
         return self._call_prose(system, user_msg, temperature=0.88)
 
+    def rewrite_paragraph(self, *, paragraph: str, tone: str, context: str = '') -> str:
+        """Rewrite a single paragraph preserving meaning but changing tone/style."""
+        system = (
+            'Eres un editor senior de copywriting y narrativa. '
+            'Reescribe SOLO un parrafo manteniendo su idea principal, '
+            'pero adaptando tono y claridad. Responde unicamente con el parrafo final '
+            'sin comillas, sin markdown y sin explicaciones extra.'
+        )
+        user_msg = (
+            f'Tono objetivo: {tone}\n\n'
+            f'Contexto opcional: {context[:500]}\n\n'
+            f'Parrafo original:\n{paragraph.strip()}'
+        )
+        rewritten = self._call_prose(system, user_msg, temperature=0.85)
+        return rewritten.strip()
+
+    def rewrite_chapter_content(self, *, chapter_title: str, original_content: str,
+                                tone: str, context: str = '',
+                                shorten_percent: int = 0,
+                                scope: str = 'full') -> str:
+        """Rewrite chapter content preserving intent while applying tone/scope constraints."""
+        system = (
+            'Eres un editor senior de narrativa y conversion. '
+            'Reescribe un capitulo completo manteniendo estructura, ideas centrales '
+            'y utilidad practica. Ajusta tono y ritmo segun la instruccion. '
+            'No agregues encabezados nuevos fuera de la estructura existente. '
+            'Devuelve solo el contenido final del capitulo en markdown limpio.'
+        )
+
+        scope_instruction = (
+            'Reescribe solo la introduccion y conserva el resto del texto sin cambios.'
+            if scope == 'intro' else
+            'Reescribe todo el contenido respetando la estructura global.'
+        )
+        shorten_instruction = ''
+        if shorten_percent and shorten_percent > 0:
+            shorten_instruction = (
+                f'Reduce aproximadamente {shorten_percent}% la longitud total del texto '
+                'sin perder claridad ni ideas clave.'
+            )
+
+        user_msg = (
+            f'Titulo del capitulo: {chapter_title}\n'
+            f'Tono objetivo: {tone}\n\n'
+            f'Alcance de edicion: {scope_instruction}\n'
+            f'Regla de longitud: {shorten_instruction or "Mantener longitud similar."}\n\n'
+            f'Contexto opcional: {context[:800]}\n\n'
+            f'Contenido original:\n{original_content.strip()}'
+        )
+        rewritten = self._call_prose(system, user_msg, temperature=0.86)
+        return rewritten.strip()
+
     # ------------------------------------------------------------------
     # MÓDULO 3: Avatares & Buyer Persona (AvatarProfile)
     # ------------------------------------------------------------------

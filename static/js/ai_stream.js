@@ -42,6 +42,8 @@ const MODULE_CONFIG = {
   },
 };
 
+let loadingBarTimer = null;
+
 function getCsrfToken() {
   const el = document.querySelector('[name=csrfmiddlewaretoken]');
   if (el) return el.value;
@@ -57,12 +59,47 @@ function showLoading(module) {
   document.getElementById('loading-overlay').classList.remove('hidden');
   const skeleton = document.getElementById(`skeleton-${module}`);
   if (skeleton) skeleton.classList.remove('hidden');
+
+  const activeCard = document.getElementById(`card-${module}`);
+  if (activeCard) {
+    activeCard.classList.add('ai-writing-pulse');
+  }
+
+  const loadingBar = document.getElementById('magic-loading-bar');
+  if (loadingBar) {
+    let width = 18;
+    loadingBar.style.width = `${width}%`;
+    if (loadingBarTimer) {
+      window.clearInterval(loadingBarTimer);
+    }
+    loadingBarTimer = window.setInterval(() => {
+      width = Math.min(width + (Math.random() * 9), 92);
+      loadingBar.style.width = `${width}%`;
+    }, 420);
+  }
 }
 
 function hideLoading(module) {
   document.getElementById('loading-overlay').classList.add('hidden');
   const skeleton = document.getElementById(`skeleton-${module}`);
   if (skeleton) skeleton.classList.add('hidden');
+
+  const activeCard = document.getElementById(`card-${module}`);
+  if (activeCard) {
+    activeCard.classList.remove('ai-writing-pulse');
+  }
+
+  const loadingBar = document.getElementById('magic-loading-bar');
+  if (loadingBar) {
+    loadingBar.style.width = '100%';
+    window.setTimeout(() => {
+      loadingBar.style.width = '18%';
+    }, 240);
+  }
+  if (loadingBarTimer) {
+    window.clearInterval(loadingBarTimer);
+    loadingBarTimer = null;
+  }
 }
 
 async function generateModule(module, projectId) {

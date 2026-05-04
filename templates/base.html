@@ -11,11 +11,10 @@
       theme: {
         extend: {
           colors: {
-            violet: {
-              400: '#a78bfa',
-              500: '#8b5cf6',
-              600: '#7c3aed',
-              700: '#6d28d9',
+            magic: {
+              500: '#6366f1',
+              600: '#4f46e5',
+              glow: '#818cf8',
             },
           },
           fontFamily: {
@@ -28,20 +27,35 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
-    body { font-family: 'Inter', sans-serif; }
+    :root {
+      --accent: 79, 70, 229;
+      --accent-soft: 129, 140, 248;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(var(--accent), 0.16), transparent 38%),
+        radial-gradient(circle at 90% 100%, rgba(16, 185, 129, 0.08), transparent 32%),
+        #09090b;
+    }
     .skeleton { background: linear-gradient(90deg, #1f2937 25%, #374151 50%, #1f2937 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
     @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
     .gradient-text { background: linear-gradient(135deg, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     .glow { box-shadow: 0 0 20px rgba(139, 92, 246, 0.3); }
     .card-hover { transition: border-color 0.2s, box-shadow 0.2s; }
     .card-hover:hover { border-color: #6d28d9; box-shadow: 0 0 0 1px #6d28d9; }
+    .glass-panel {
+      background: rgba(17, 24, 39, 0.7);
+      border: 1px solid rgba(107, 114, 128, 0.35);
+      backdrop-filter: blur(10px);
+    }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen">
+<body class="text-zinc-100 min-h-screen bg-zinc-950">
 
   <!-- Navbar -->
-  <nav class="border-b border-gray-800 bg-gray-950/90 backdrop-blur sticky top-0 z-50">
+  <nav class="border-b border-zinc-800 bg-zinc-950/90 backdrop-blur sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
       <a href="{% url 'home' %}" class="flex items-center gap-2 font-bold text-lg">
         <span class="text-2xl">✨</span>
@@ -49,18 +63,25 @@
       </a>
       <div class="flex items-center gap-4">
         {% if user.is_authenticated %}
-          <a href="{% url 'core:dashboard' %}" class="text-gray-400 hover:text-gray-100 text-sm transition-colors">Dashboard</a>
-          <a href="{% url 'accounts:account_settings' %}" class="text-gray-400 hover:text-gray-100 text-sm transition-colors">Mi Cuenta</a>
-          <a href="{% url 'core:project_create' %}" class="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          <a href="{% url 'core:dashboard' %}" class="text-zinc-400 hover:text-zinc-100 text-sm transition-colors">Dashboard</a>
+          <a href="{% url 'core:dashboard' %}" class="text-zinc-400 hover:text-zinc-100 text-sm transition-colors">The Lab</a>
+          <a href="{% url 'core:dashboard' %}#vault" class="text-zinc-400 hover:text-zinc-100 text-sm transition-colors">The Vault</a>
+          <a href="{% url 'accounts:account_settings' %}" class="text-zinc-400 hover:text-zinc-100 text-sm transition-colors">Mi Cuenta</a>
+          <button type="button" id="magic-open"
+                  class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:text-zinc-100 hover:border-zinc-500 text-xs transition-colors">
+            Magic Bar
+            <span class="text-[10px] text-zinc-500">Ctrl+K</span>
+          </button>
+          <a href="{% url 'core:project_create' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-indigo-500/20 shadow-lg">
             + Nuevo Proyecto
           </a>
           <form method="post" action="{% url 'accounts:logout' %}" class="inline">
             {% csrf_token %}
-            <button type="submit" class="text-gray-500 hover:text-gray-300 text-sm transition-colors">Salir</button>
+            <button type="submit" class="text-zinc-500 hover:text-zinc-300 text-sm transition-colors">Salir</button>
           </form>
         {% else %}
-          <a href="{% url 'accounts:login' %}" class="text-gray-400 hover:text-gray-100 text-sm transition-colors">Iniciar Sesión</a>
-          <a href="{% url 'accounts:register' %}" class="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          <a href="{% url 'accounts:login' %}" class="text-zinc-400 hover:text-zinc-100 text-sm transition-colors">Iniciar Sesión</a>
+          <a href="{% url 'accounts:register' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-indigo-500/20 shadow-lg">
             Empezar Gratis
           </a>
         {% endif %}
@@ -85,6 +106,373 @@
   <main>
     {% block content %}{% endblock %}
   </main>
+
+  {% if user.is_authenticated %}
+  <div id="magic-overlay" class="hidden fixed inset-0 z-[70] bg-gray-950/70 backdrop-blur-sm px-4">
+    <div class="max-w-2xl mx-auto mt-24 glass-panel rounded-2xl overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-800 flex items-center gap-2">
+        <span class="text-violet-300 text-xs font-semibold uppercase tracking-wider">Magic Bar</span>
+        <span class="text-gray-500 text-xs">Escribe un comando o accion rapida</span>
+      </div>
+      <div class="p-4">
+        <input id="magic-input" type="text"
+               class="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-200 focus:outline-none focus:border-violet-500"
+               placeholder="Ej: ir al dashboard, nuevo proyecto, activar tono esmeralda" />
+        <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <button type="button" class="magic-suggestion bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-left hover:border-violet-600" data-command="ir al dashboard">Ir al Dashboard</button>
+          <button type="button" class="magic-suggestion bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-left hover:border-violet-600" data-command="abrir nuevo proyecto">Nuevo Proyecto</button>
+          <button type="button" class="magic-suggestion bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-left hover:border-violet-600" data-command="abrir onboarding">Onboarding Plan A</button>
+          <button type="button" class="magic-suggestion bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-left hover:border-violet-600" data-command="activar tono esmeralda">Tono Esmeralda</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="magic-confirm-overlay" class="hidden fixed inset-0 z-[78] bg-zinc-950/75 backdrop-blur-sm px-4">
+    <div class="max-w-md mx-auto mt-40 bg-zinc-900 border border-zinc-700 rounded-2xl p-5">
+      <p class="text-[11px] uppercase tracking-wider text-indigo-300 font-semibold">Confirmación</p>
+      <h3 class="text-lg font-bold text-zinc-100 mt-1">Aplicar cambio en lote</h3>
+      <p id="magic-confirm-text" class="text-sm text-zinc-400 mt-2">¿Deseas continuar?</p>
+      <div class="mt-4 flex items-center justify-end gap-2">
+        <button type="button" id="magic-confirm-cancel" class="text-sm px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200">Cancelar</button>
+        <button type="button" id="magic-confirm-accept" class="text-sm px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="magic-toast" class="hidden fixed bottom-5 right-5 z-[80] bg-gray-900 border border-gray-700 text-gray-200 text-xs px-4 py-2 rounded-xl shadow-xl"></div>
+  {% endif %}
+
+  {% if user.is_authenticated %}
+  <script>
+    (function initMagicBar() {
+      const overlay = document.getElementById('magic-overlay');
+      const openBtn = document.getElementById('magic-open');
+      const input = document.getElementById('magic-input');
+      const toast = document.getElementById('magic-toast');
+      const confirmOverlay = document.getElementById('magic-confirm-overlay');
+      const confirmText = document.getElementById('magic-confirm-text');
+      const confirmCancel = document.getElementById('magic-confirm-cancel');
+      const confirmAccept = document.getElementById('magic-confirm-accept');
+      const suggestButtons = document.querySelectorAll('.magic-suggestion');
+      if (!overlay || !input) return;
+
+      let confirmResolve = null;
+
+      const showToast = (text) => {
+        if (!toast) return;
+        toast.textContent = text;
+        toast.classList.remove('hidden');
+        window.setTimeout(() => toast.classList.add('hidden'), 2200);
+      };
+
+      const setAccent = (kind) => {
+        if (kind === 'emerald') {
+          document.documentElement.style.setProperty('--accent', '16, 185, 129');
+          document.documentElement.style.setProperty('--accent-soft', '110, 231, 183');
+          localStorage.setItem('magicbook_accent', 'emerald');
+          showToast('Tema esmeralda activado');
+        } else {
+          document.documentElement.style.setProperty('--accent', '124, 58, 237');
+          document.documentElement.style.setProperty('--accent-soft', '167, 139, 250');
+          localStorage.setItem('magicbook_accent', 'violet');
+          showToast('Tema violeta activado');
+        }
+      };
+
+      const storedAccent = localStorage.getItem('magicbook_accent');
+      if (storedAccent === 'emerald') setAccent('emerald');
+
+      const open = () => {
+        overlay.classList.remove('hidden');
+        input.focus();
+        input.select();
+      };
+      const close = () => {
+        overlay.classList.add('hidden');
+      };
+
+      const confirmAction = (message) => new Promise((resolve) => {
+        if (!confirmOverlay || !confirmText || !confirmAccept || !confirmCancel) {
+          resolve(true);
+          return;
+        }
+        confirmResolve = resolve;
+        confirmText.textContent = message;
+        confirmOverlay.classList.remove('hidden');
+      });
+
+      const closeConfirm = (accepted) => {
+        if (!confirmOverlay) return;
+        confirmOverlay.classList.add('hidden');
+        if (confirmResolve) {
+          confirmResolve(Boolean(accepted));
+          confirmResolve = null;
+        }
+      };
+
+      const getCsrfToken = () => {
+        const match = document.cookie.match(/csrftoken=([^;]+)/);
+        return match ? match[1] : '';
+      };
+
+      const extractAdvancedChapterCommand = (cmd) => {
+        const hasRewriteIntent =
+          cmd.includes('haz') ||
+          cmd.includes('reescribe') ||
+          cmd.includes('cambia') ||
+          cmd.includes('capítulo') ||
+          cmd.includes('capitulo');
+        if (!hasRewriteIntent) return null;
+
+        const rangeMatch = cmd.match(/cap[ií]tulos?\s*(\d{1,2})\s*(?:al|a|\-)\s*(\d{1,2})/i);
+        const singleMatch = cmd.match(/cap[ií]tulo\s*(\d{1,2})/i);
+        if (!rangeMatch && !singleMatch) return null;
+
+        let chapterNumbers = [];
+        if (rangeMatch) {
+          const a = Number(rangeMatch[1]);
+          const b = Number(rangeMatch[2]);
+          const start = Math.min(a, b);
+          const end = Math.max(a, b);
+          for (let n = start; n <= end; n += 1) chapterNumbers.push(n);
+        } else if (singleMatch) {
+          chapterNumbers = [Number(singleMatch[1])];
+        }
+
+        let tone = 'mas claro y directo';
+        const toneAfterCon = cmd.match(/con\s+tono\s+([a-záéíóúñ\s]{3,50})/i);
+        const toneAfterTonoA = cmd.match(/tono\s+a\s+([a-záéíóúñ\s]{3,50})/i);
+        const toneAfterMas = cmd.match(/m[aá]s\s+([a-záéíóúñ\s]{3,40})/i);
+        if (toneAfterCon && toneAfterCon[1]) {
+          tone = toneAfterCon[1].trim();
+        } else if (toneAfterTonoA && toneAfterTonoA[1]) {
+          tone = toneAfterTonoA[1].trim();
+        } else if (toneAfterMas && toneAfterMas[1]) {
+          tone = toneAfterMas[1].trim();
+        }
+
+        const shorterMatch = cmd.match(/(\d{1,2})\s*%\s*m[aá]s\s*cort/i);
+        const shortenPercent = shorterMatch ? Math.min(Number(shorterMatch[1]), 60) : 0;
+
+        const scope = /solo\s+cambia\s+la\s+introducci[oó]n|solo\s+introducci[oó]n|introducci[oó]n\s+del\s+cap[ií]tulo/i.test(cmd)
+          ? 'intro'
+          : 'full';
+
+        return {
+          chapterNumbers,
+          tone,
+          shortenPercent,
+          scope,
+        };
+      };
+
+      const executeChapterRewrite = async ({ chapterNumbers, tone, shortenPercent, scope }) => {
+        const projectRoot = document.getElementById('project-app');
+        const projectId = projectRoot?.dataset?.projectId;
+        if (!projectId) {
+          showToast('Abre un proyecto en The Lab para editar capítulos con Magic Bar.');
+          return;
+        }
+
+        const isRange = chapterNumbers.length > 1;
+        const chapterLabel = isRange
+          ? `capítulos ${chapterNumbers[0]}-${chapterNumbers[chapterNumbers.length - 1]}`
+          : `capítulo ${chapterNumbers[0]}`;
+
+        if (isRange) {
+          const shouldContinue = await confirmAction(
+            `¿Reescribo ${chapterLabel} con tono "${tone}"${shortenPercent ? ` y ${shortenPercent}% más corto` : ''}?`
+          );
+          if (!shouldContinue) {
+            showToast('Operación cancelada.');
+            return;
+          }
+        }
+
+        showToast(`Reescribiendo ${chapterLabel}${scope === 'intro' ? ' (solo intro)' : ''}...`);
+        try {
+          const resp = await fetch(`/dashboard/api/rewrite/chapter/${projectId}/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': getCsrfToken(),
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              chapter_num: chapterNumbers[0],
+              chapter_numbers: chapterNumbers,
+              tone,
+              shorten_percent: shortenPercent,
+              scope,
+            }),
+          });
+          const data = await resp.json();
+          if (!data.success) {
+            throw new Error(data.error || 'No se pudo reescribir el capítulo.');
+          }
+
+          const previewTitle = document.getElementById('preview-title');
+          const previewContent = document.getElementById('preview-content');
+          const firstChapter = chapterNumbers[0];
+          const chapterPreviewVisible =
+            previewTitle &&
+            previewContent &&
+            previewTitle.textContent.toLowerCase().includes(`capítulo ${firstChapter}`.toLowerCase());
+
+          if (!isRange && chapterPreviewVisible) {
+            previewContent.innerHTML = (data.rewritten || '')
+              .split(/\n\s*\n/)
+              .map((block) => block.trim())
+              .filter(Boolean)
+              .map((block) => `<p class="mb-3">${block.replace(/\n/g, '<br>')}</p>`)
+              .join('');
+          }
+
+          if (isRange) {
+            showToast(`Listo: ${data.rewritten_items?.length || chapterNumbers.length} capítulos reescritos.`);
+          } else {
+            showToast(`Capítulo ${firstChapter} reescrito (${data.word_count} palabras).`);
+          }
+        } catch (err) {
+          showToast(`Error: ${err.message}`);
+        }
+      };
+
+      const executeChapterUndo = async (chapterNum) => {
+        const projectRoot = document.getElementById('project-app');
+        const projectId = projectRoot?.dataset?.projectId;
+        if (!projectId) {
+          showToast('Abre un proyecto en The Lab para usar undo de capítulos.');
+          return;
+        }
+
+        showToast(`Deshaciendo cambios del capítulo ${chapterNum}...`);
+        try {
+          const resp = await fetch(`/dashboard/api/rewrite/chapter/${projectId}/undo/`, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': getCsrfToken(),
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ chapter_num: chapterNum }),
+          });
+          const data = await resp.json();
+          if (!data.success) {
+            throw new Error(data.error || 'No se pudo deshacer.');
+          }
+
+          const wcBadge = document.getElementById(`wc-badge-${chapterNum}`);
+          if (wcBadge) {
+            wcBadge.textContent = `${data.word_count} palabras`;
+            wcBadge.classList.remove('hidden');
+          }
+          const undoBtn = document.getElementById(`undo-btn-${chapterNum}`);
+          if (undoBtn && !data.can_undo_again) undoBtn.classList.add('hidden');
+
+          showToast(`Undo aplicado en capítulo ${chapterNum}.`);
+        } catch (err) {
+          showToast(`Error: ${err.message}`);
+        }
+      };
+
+      const runCommand = async (raw) => {
+        const cmd = (raw || '').toLowerCase().trim();
+        if (!cmd) return;
+
+        const chapterInstruction = extractAdvancedChapterCommand(cmd);
+        if (chapterInstruction) {
+          await executeChapterRewrite(chapterInstruction);
+          close();
+          return;
+        }
+
+        const undoMatch = cmd.match(/undo\s+(?:del\s+)?cap[ií]tulo\s*(\d{1,2})/i);
+        if (undoMatch) {
+          await executeChapterUndo(Number(undoMatch[1]));
+          close();
+          return;
+        }
+
+        if (cmd.includes('dashboard')) {
+          window.location.href = "{% url 'core:dashboard' %}";
+          return;
+        }
+        if (cmd.includes('nuevo proyecto') || cmd.includes('crear proyecto') || cmd.includes('lab')) {
+          window.location.href = "{% url 'core:project_create' %}";
+          return;
+        }
+        if (cmd.includes('onboarding')) {
+          window.location.href = "{% url 'accounts:plan_a_onboarding' %}";
+          return;
+        }
+        if (cmd.includes('vault')) {
+          window.location.href = "{% url 'core:dashboard' %}#vault";
+          return;
+        }
+        if (cmd.includes('esmeralda') || cmd.includes('emerald')) {
+          setAccent('emerald');
+          close();
+          return;
+        }
+        if (cmd.includes('violeta') || cmd.includes('violet')) {
+          setAccent('violet');
+          close();
+          return;
+        }
+        if (cmd.includes('divertido') || cmd.includes('tono')) {
+          showToast('Tip: usa Voz de Marca The Friend para un tono mas cercano.');
+          close();
+          return;
+        }
+
+        showToast('Comando no reconocido. Prueba: dashboard, nuevo proyecto, esmeralda.');
+      };
+
+      if (openBtn) openBtn.addEventListener('click', open);
+
+      suggestButtons.forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          input.value = btn.dataset.command || '';
+          await runCommand(input.value);
+        });
+      });
+
+      input.addEventListener('keydown', async (ev) => {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          await runCommand(input.value);
+        }
+        if (ev.key === 'Escape') close();
+      });
+
+      overlay.addEventListener('click', (ev) => {
+        if (ev.target === overlay) close();
+      });
+
+      if (confirmCancel) {
+        confirmCancel.addEventListener('click', () => closeConfirm(false));
+      }
+      if (confirmAccept) {
+        confirmAccept.addEventListener('click', () => closeConfirm(true));
+      }
+      if (confirmOverlay) {
+        confirmOverlay.addEventListener('click', (ev) => {
+          if (ev.target === confirmOverlay) closeConfirm(false);
+        });
+      }
+
+      document.addEventListener('keydown', (ev) => {
+        const isCmdK = (ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'k';
+        if (isCmdK) {
+          ev.preventDefault();
+          if (overlay.classList.contains('hidden')) open();
+          else close();
+        }
+        if (ev.key === 'Escape' && !overlay.classList.contains('hidden')) close();
+      });
+    })();
+  </script>
+  {% endif %}
 
   {% block extra_js %}{% endblock %}
 </body>

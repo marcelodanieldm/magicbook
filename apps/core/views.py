@@ -9,7 +9,7 @@ from django.views.generic import View, ListView, DetailView, CreateView
 from django.http import JsonResponse, HttpResponse, StreamingHttpResponse
 from django.contrib import messages
 
-from .models import Project, NicheAnalysis, OfferStructure, RevenueStrategy, ProductOutline, CopyLibrary, ChapterContent, UserResource, ProjectArtifact, TestRun, PlanAEnrollment, AvatarProfile
+from .models import Project, NicheAnalysis, OfferStructure, RevenueStrategy, ProductOutline, CopyLibrary, ChapterContent, UserResource, ProjectArtifact, TestRun, PlanAEnrollment, AvatarProfile, ChapterRewriteHistory
 from .forms import ProjectCreateForm
 from .services.ai_service import AIService
 
@@ -76,6 +76,71 @@ def _market_context(project) -> str:
     return ', '.join(markets)
 
 
+def _first_text(value):
+    """Extract the first readable string from nested payload-like structures."""
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    if isinstance(value, list):
+        for item in value:
+            text = _first_text(item)
+            if text:
+                return text
+    if isinstance(value, dict):
+        for key in ('title', 'name', 'tagline', 'summary', 'hook', 'description', 'text', 'headline'):
+            text = _first_text(value.get(key))
+            if text:
+                return text
+        for item in value.values():
+            text = _first_text(item)
+            if text:
+                return text
+    return ''
+
+
+def _build_launch_map_nodes(project):
+    """Builds the 16-step launch map status and quick summaries for dashboard popovers."""
+    artifacts = {a.artifact_type: a for a in project.artifacts.all()}
+
+    offer = getattr(project, 'offer_structure', None)
+    niche = getattr(project, 'niche_analysis', None)
+    avatars = getattr(project, 'avatar_profile', None)
+    revenue = getattr(project, 'revenue_strategy', None)
+    outline = getattr(project, 'product_outline', None)
+
+    specs = [
+        ('offer_modeling', 'Oferta', bool(offer), _first_text(getattr(offer, 'product_name', '')) or 'Oferta base lista.'),
+        ('market_research', 'Mercado', bool(niche), _first_text(getattr(niche, 'avatar_name', '')) or 'Insights de nicho generados.'),
+        ('buyer_persona', 'Avatares', bool(avatars and avatars.avatars), _first_text((avatars.avatars or [{}])[0].get('name') if avatars and avatars.avatars else '') or 'Avatares listos.'),
+        ('angles', 'Angulos', bool(artifacts.get('angles') and artifacts['angles'].status == 'done'), _first_text(getattr(artifacts.get('angles'), 'payload', {})) or 'Angulos de marketing generados.'),
+        ('visual_identity', 'Visual', bool(artifacts.get('visual_identity') and artifacts['visual_identity'].status == 'done'), _first_text(getattr(artifacts.get('visual_identity'), 'payload', {})) or 'Identidad visual definida.'),
+        ('mockups', 'Mockups', bool(artifacts.get('mockups') and artifacts['mockups'].status == 'done'), _first_text(getattr(artifacts.get('mockups'), 'payload', {})) or 'Mockups listos para produccion.'),
+        ('ads_generator', 'Ads', bool(artifacts.get('ads_generator') and artifacts['ads_generator'].status == 'done'), _first_text(getattr(artifacts.get('ads_generator'), 'payload', {})) or 'Creativos de ads listos.'),
+        ('landing_page', 'Landing', bool(artifacts.get('landing_page') and artifacts['landing_page'].status == 'done'), _first_text(getattr(artifacts.get('landing_page'), 'payload', {})) or 'Landing base generada.'),
+        ('product_copies', 'Copies', bool(artifacts.get('product_copies') and artifacts['product_copies'].status == 'done'), _first_text(getattr(artifacts.get('product_copies'), 'payload', {})) or 'Copys principales listos.'),
+        ('ad_copies', 'Ad Copies', bool(artifacts.get('ad_copies') and artifacts['ad_copies'].status == 'done'), _first_text(getattr(artifacts.get('ad_copies'), 'payload', {})) or 'Copys de anuncios listos.'),
+        ('premium_scripts', 'Guiones', bool(artifacts.get('premium_scripts') and artifacts['premium_scripts'].status == 'done'), _first_text(getattr(artifacts.get('premium_scripts'), 'payload', {})) or 'Guiones de venta listos.'),
+        ('ugc_realistic', 'UGC', bool(artifacts.get('ugc_realistic') and artifacts['ugc_realistic'].status == 'done'), _first_text(getattr(artifacts.get('ugc_realistic'), 'payload', {})) or 'Prompts UGC listos.'),
+        ('product_generator', 'Producto', bool(outline), _first_text(getattr(outline, 'title', '')) or 'Estructura del producto generada.'),
+        ('upsell_aov', 'Upsell', bool(revenue), _first_text(getattr(revenue, 'upsell', {})) or 'Estrategia AOV configurada.'),
+        ('email_marketing', 'Email', bool(artifacts.get('email_marketing') and artifacts['email_marketing'].status == 'done'), _first_text(getattr(artifacts.get('email_marketing'), 'payload', {})) or 'Secuencias de email listas.'),
+        ('global_export', 'Global', bool(artifacts.get('global_export') and artifacts['global_export'].status == 'done'), _first_text(getattr(artifacts.get('global_export'), 'payload', {})) or 'Checklist de expansion global listo.'),
+    ]
+
+    nodes = []
+    active_assigned = False
+    for key, label, done, summary in specs:
+        if done:
+            status = 'done'
+        elif not active_assigned:
+            status = 'active'
+            active_assigned = True
+        else:
+            status = 'pending'
+        nodes.append({'key': key, 'label': label, 'status': status, 'summary': summary[:140]})
+
+    return nodes
+
+
 # ──────────────────────────────────────────────
 # PUBLIC
 # ──────────────────────────────────────────────
@@ -110,8 +175,74 @@ class DashboardView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         return Project.objects.filter(user=self.request.user).select_related(
-            'niche_analysis', 'offer_structure', 'revenue_strategy', 'product_outline', 'copy_library'
-        )
+            'niche_analysis', 'offer_structure', 'revenue_strategy', 'product_outline', 'copy_library', 'avatar_profile'
+        ).prefetch_related('artifacts')
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        projects_qs = ctx['projects']
+        enrollment = PlanAEnrollment.objects.filter(user=self.request.user).first()
+        has_projects = projects_qs.exists()
+        first_project = projects_qs.first()
+
+        step1_done = bool(enrollment and enrollment.credentials_email_sent_at)
+        step2_done = bool(enrollment and enrollment.first_login_at)
+        step3_done = bool(enrollment and (enrollment.first_project_launched_at or has_projects))
+
+        for project in projects_qs:
+            launch_map_nodes = _build_launch_map_nodes(project)
+            project.launch_map_nodes = launch_map_nodes
+            project.launch_done_count = sum(1 for node in launch_map_nodes if node['status'] == 'done')
+
+        quickstart_steps = [
+            {
+                'label': 'Email de acceso recibido',
+                'hint': 'Confirma que tienes tus links directos a la app y a crear proyecto.',
+                'done': step1_done,
+            },
+            {
+                'label': 'Cuenta activa en la app',
+                'hint': 'Tu sesión y entorno de Plan A ya están operativos.',
+                'done': step2_done,
+            },
+            {
+                'label': 'Primer producto lanzado',
+                'hint': 'Crea tu primer proyecto para encender la fábrica de contenido.',
+                'done': step3_done,
+            },
+        ]
+
+        if not step1_done:
+            primary_cta = {
+                'label': 'Completar onboarding de Plan A',
+                'url': 'accounts:plan_a_onboarding',
+                'helper': 'Reenvía credenciales y revisa el flujo de activación en 1 minuto.',
+            }
+        elif not has_projects:
+            primary_cta = {
+                'label': 'Crear mi primer proyecto',
+                'url': 'core:project_create',
+                'helper': 'Empieza con tu nicho y deja que la IA construya tu oferta.',
+            }
+        elif first_project and first_project.completion_percentage < 100:
+            primary_cta = {
+                'label': 'Continuar proyecto activo',
+                'url': 'core:project_detail',
+                'args': [first_project.pk],
+                'helper': 'Retoma el módulo pendiente para completar el flujo base.',
+            }
+        else:
+            primary_cta = {
+                'label': 'Ir a la Fábrica 16',
+                'url': 'core:project_factory',
+                'args': [first_project.pk] if first_project else [],
+                'helper': 'Escala con ads, landing, scripts y exportación global.',
+            }
+
+        ctx['quickstart_steps'] = quickstart_steps
+        ctx['quickstart_done_count'] = sum(1 for item in quickstart_steps if item['done'])
+        ctx['primary_cta'] = primary_cta
+        return ctx
 
 
 class ProjectCreateView(LoginRequiredMixin, CreateView):
@@ -144,11 +275,17 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         project = self.object
-        ctx['has_niche'] = hasattr(project, 'niche_analysis')
-        ctx['has_offer'] = hasattr(project, 'offer_structure')
-        ctx['has_revenue'] = hasattr(project, 'revenue_strategy')
-        ctx['has_outline'] = hasattr(project, 'product_outline')
-        ctx['has_copy'] = hasattr(project, 'copy_library')
+        has_niche = hasattr(project, 'niche_analysis')
+        has_offer = hasattr(project, 'offer_structure')
+        has_revenue = hasattr(project, 'revenue_strategy')
+        has_outline = hasattr(project, 'product_outline')
+        has_copy = hasattr(project, 'copy_library')
+
+        ctx['has_niche'] = has_niche
+        ctx['has_offer'] = has_offer
+        ctx['has_revenue'] = has_revenue
+        ctx['has_outline'] = has_outline
+        ctx['has_copy'] = has_copy
         ctx['step_labels'] = STEP_LABELS
         ctx['step_labels_json'] = json.dumps(STEP_LABELS)
         # Build a dict {chapter_number: word_count} for written chapters
@@ -158,6 +295,96 @@ class ProjectDetailView(LoginRequiredMixin, DetailView):
         }
         ctx['written_chapters'] = written_chapters
         ctx['written_count'] = len(written_chapters)
+        undo_available_chapters = list(
+            ChapterRewriteHistory.objects.filter(
+                project=project,
+                undone_at__isnull=True,
+            ).values_list('chapter_number', flat=True).distinct()
+        )
+        ctx['undo_available_chapters'] = undo_available_chapters
+
+        if not has_niche:
+            next_step = {
+                'title': 'Siguiente paso recomendado: Análisis de Nicho',
+                'description': 'Empieza por aquí para desbloquear oferta, revenue y resto del flujo.',
+                'action_type': 'generate',
+                'module': 'niche',
+                'button': 'Generar Análisis de Nicho',
+            }
+        elif not has_offer:
+            next_step = {
+                'title': 'Siguiente paso recomendado: Oferta Irresistible',
+                'description': 'Define precio, bonos y garantía para preparar la venta.',
+                'action_type': 'generate',
+                'module': 'offer',
+                'button': 'Generar Oferta',
+            }
+        elif not has_revenue:
+            next_step = {
+                'title': 'Siguiente paso recomendado: Revenue Management',
+                'description': 'Activa order bump y upsell para subir el ticket promedio.',
+                'action_type': 'generate',
+                'module': 'revenue',
+                'button': 'Generar Revenue',
+            }
+        elif not has_outline:
+            next_step = {
+                'title': 'Siguiente paso recomendado: Índice del Infoproducto',
+                'description': 'Genera la estructura completa para empezar a redactar capítulos.',
+                'action_type': 'generate',
+                'module': 'outline',
+                'button': 'Generar Índice',
+            }
+        elif not has_copy:
+            next_step = {
+                'title': 'Siguiente paso recomendado: Biblioteca de Copies',
+                'description': 'Crea headlines y copies listos para tus anuncios y landing.',
+                'action_type': 'generate',
+                'module': 'copy',
+                'button': 'Generar Copies',
+            }
+        else:
+            next_step = {
+                'title': 'Flujo base completo',
+                'description': 'Tu base está lista. Ahora escala en la Fábrica 16.',
+                'action_type': 'url',
+                'url_name': 'core:project_factory',
+                'button': 'Abrir Fábrica 16',
+            }
+
+        ctx['next_step'] = next_step
+
+        suggestions = []
+        if has_offer:
+            offer = project.offer_structure
+            bonus_count = len(offer.bonuses or [])
+            if bonus_count < 2:
+                suggestions.append({
+                    'title': 'Oferta mejorable detectada',
+                    'detail': 'Agrega al menos 2 bonuses para subir valor percibido y conversion.',
+                    'module': 'offer',
+                    'cta': 'Aplicar mejora de oferta',
+                })
+
+        if has_outline and not has_copy:
+            suggestions.append({
+                'title': 'Activa copys para vender mas rapido',
+                'detail': 'Ya tienes estructura: genera headlines y hooks para anuncios en un clic.',
+                'module': 'copy',
+                'cta': 'Generar copys sugeridos',
+            })
+
+        if has_offer and not has_revenue:
+            suggestions.append({
+                'title': 'Monetizacion incompleta',
+                'detail': 'Falta Order Bump + Upsell para elevar ticket promedio.',
+                'module': 'revenue',
+                'cta': 'Completar revenue ahora',
+            })
+
+        ctx['suggestions'] = suggestions[:2]
+        ctx['launch_map_nodes'] = _build_launch_map_nodes(project)
+        ctx['launch_done_count'] = sum(1 for item in ctx['launch_map_nodes'] if item['status'] == 'done')
         return ctx
 
 
@@ -824,6 +1051,222 @@ class WriteChapterView(LoginRequiredMixin, View):
 
         except Exception as exc:
             return JsonResponse({'success': False, 'error': str(exc)}, status=500)
+
+
+class RewriteParagraphView(LoginRequiredMixin, View):
+    """POST /api/rewrite/paragraph/<pk>/ → rewrites a single paragraph with IA."""
+
+    def post(self, request, pk):
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        try:
+            payload = json.loads(request.body.decode('utf-8') or '{}')
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'JSON inválido.'}, status=400)
+
+        paragraph = (payload.get('paragraph') or '').strip()
+        tone = (payload.get('tone') or 'mas claro').strip()
+        context = (payload.get('context') or '').strip()
+
+        if not paragraph:
+            return JsonResponse({'success': False, 'error': 'Falta el párrafo a reescribir.'}, status=400)
+
+        try:
+            service = AIService(model=project.ai_model, brand_voice=project.brand_voice)
+            rewritten = service.rewrite_paragraph(
+                paragraph=paragraph,
+                tone=tone,
+                context=context,
+            )
+            return JsonResponse({'success': True, 'rewritten': rewritten})
+        except Exception as exc:
+            return JsonResponse({'success': False, 'error': str(exc)}, status=500)
+
+
+class RewriteChapterView(LoginRequiredMixin, View):
+    """POST /api/rewrite/chapter/<pk>/ → rewrites full chapter content with IA."""
+
+    def post(self, request, pk):
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        try:
+            payload = json.loads(request.body.decode('utf-8') or '{}')
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'JSON inválido.'}, status=400)
+
+        chapter_num = payload.get('chapter_num')
+        chapter_numbers = payload.get('chapter_numbers')
+        tone = (payload.get('tone') or 'mas claro y directo').strip()
+        scope = (payload.get('scope') or 'full').strip().lower()
+        shorten_percent = payload.get('shorten_percent', 0)
+
+        if scope not in {'full', 'intro'}:
+            return JsonResponse({'success': False, 'error': 'scope debe ser "full" o "intro".'}, status=400)
+
+        try:
+            shorten_percent = int(shorten_percent)
+        except (TypeError, ValueError):
+            shorten_percent = 0
+        shorten_percent = max(0, min(shorten_percent, 60))
+
+        requested_numbers = []
+        if isinstance(chapter_num, int):
+            requested_numbers.append(chapter_num)
+        if isinstance(chapter_numbers, list):
+            requested_numbers.extend([n for n in chapter_numbers if isinstance(n, int)])
+
+        requested_numbers = sorted(set(requested_numbers))
+        if not requested_numbers:
+            return JsonResponse(
+                {'success': False, 'error': 'Debes indicar chapter_num o chapter_numbers válidos.'},
+                status=400,
+            )
+
+        chapters = list(
+            ChapterContent.objects.filter(
+                project=project,
+                chapter_number__in=requested_numbers,
+                status='done',
+            ).order_by('chapter_number')
+        )
+        found_numbers = {c.chapter_number for c in chapters}
+        missing_numbers = [n for n in requested_numbers if n not in found_numbers]
+
+        if not chapters:
+            return JsonResponse(
+                {
+                    'success': False,
+                    'error': 'Ningún capítulo solicitado está escrito todavía.'
+                },
+                status=400,
+            )
+
+        try:
+            service = AIService(model=project.ai_model, brand_voice=project.brand_voice)
+            rewritten_items = []
+            for chapter in chapters:
+                content_to_rewrite = chapter.content
+                scope_for_call = scope
+                if scope == 'intro':
+                    blocks = [b.strip() for b in re.split(r'\n\s*\n', chapter.content or '') if b.strip()]
+                    intro_blocks = blocks[:2] if len(blocks) >= 2 else blocks
+                    content_to_rewrite = '\n\n'.join(intro_blocks)
+                    scope_for_call = 'intro'
+
+                rewritten_part = service.rewrite_chapter_content(
+                    chapter_title=chapter.title or f'Capítulo {chapter.chapter_number}',
+                    original_content=content_to_rewrite,
+                    tone=tone,
+                    context=f'Proyecto: {project.title or project.niche_input}',
+                    shorten_percent=shorten_percent,
+                    scope=scope_for_call,
+                )
+
+                if scope == 'intro':
+                    blocks = [b.strip() for b in re.split(r'\n\s*\n', chapter.content or '') if b.strip()]
+                    remaining = blocks[2:] if len(blocks) > 2 else []
+                    final_content = rewritten_part.strip()
+                    if remaining:
+                        final_content += '\n\n' + '\n\n'.join(remaining)
+                else:
+                    final_content = rewritten_part.strip()
+
+                ChapterRewriteHistory.objects.create(
+                    project=project,
+                    chapter_number=chapter.chapter_number,
+                    previous_content=chapter.content,
+                    previous_word_count=chapter.word_count,
+                    tone=tone,
+                    scope=scope,
+                    shorten_percent=shorten_percent,
+                )
+
+                chapter.content = final_content
+                chapter.word_count = len(final_content.split())
+                chapter.save(update_fields=['content', 'word_count', 'updated_at'])
+
+                rewritten_items.append(
+                    {
+                        'chapter_number': chapter.chapter_number,
+                        'title': chapter.title,
+                        'word_count': chapter.word_count,
+                        'rewritten': final_content,
+                    }
+                )
+
+            response_data = {
+                'success': True,
+                'tone': tone,
+                'scope': scope,
+                'shorten_percent': shorten_percent,
+                'rewritten_items': rewritten_items,
+                'missing_chapters': missing_numbers,
+            }
+            if len(rewritten_items) == 1:
+                single = rewritten_items[0]
+                response_data.update(
+                    {
+                        'chapter_number': single['chapter_number'],
+                        'title': single['title'],
+                        'word_count': single['word_count'],
+                        'rewritten': single['rewritten'],
+                    }
+                )
+            return JsonResponse(response_data)
+        except Exception as exc:
+            return JsonResponse({'success': False, 'error': str(exc)}, status=500)
+
+
+class UndoChapterRewriteView(LoginRequiredMixin, View):
+    """POST /api/rewrite/chapter/<pk>/undo/ → restores last rewrite snapshot."""
+
+    def post(self, request, pk):
+        project = get_object_or_404(Project, pk=pk, user=request.user)
+        try:
+            payload = json.loads(request.body.decode('utf-8') or '{}')
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'JSON inválido.'}, status=400)
+
+        chapter_num = payload.get('chapter_num')
+        if not isinstance(chapter_num, int):
+            return JsonResponse({'success': False, 'error': 'Debes indicar chapter_num como entero.'}, status=400)
+
+        chapter = ChapterContent.objects.filter(
+            project=project,
+            chapter_number=chapter_num,
+            status='done',
+        ).first()
+        if not chapter:
+            return JsonResponse({'success': False, 'error': 'Ese capítulo no existe o no está escrito.'}, status=400)
+
+        history_item = ChapterRewriteHistory.objects.filter(
+            project=project,
+            chapter_number=chapter_num,
+            undone_at__isnull=True,
+        ).order_by('-created_at').first()
+        if not history_item:
+            return JsonResponse({'success': False, 'error': 'No hay historial para deshacer en este capítulo.'}, status=400)
+
+        chapter.content = history_item.previous_content
+        chapter.word_count = history_item.previous_word_count
+        chapter.save(update_fields=['content', 'word_count', 'updated_at'])
+
+        history_item.undone_at = timezone.now()
+        history_item.save(update_fields=['undone_at'])
+
+        has_more = ChapterRewriteHistory.objects.filter(
+            project=project,
+            chapter_number=chapter_num,
+            undone_at__isnull=True,
+        ).exists()
+
+        return JsonResponse(
+            {
+                'success': True,
+                'chapter_number': chapter_num,
+                'word_count': chapter.word_count,
+                'restored': chapter.content,
+                'can_undo_again': has_more,
+            }
+        )
 
 
 

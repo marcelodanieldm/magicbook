@@ -254,6 +254,32 @@ class ChapterContent(models.Model):
         return f"Cap. {self.chapter_number}: {self.title}"
 
 
+class ChapterRewriteHistory(models.Model):
+    """Stores snapshots before AI rewrites to support chapter-level undo."""
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name='chapter_rewrite_history'
+    )
+    chapter_number = models.PositiveSmallIntegerField()
+    previous_content = models.TextField()
+    previous_word_count = models.PositiveIntegerField(default=0)
+    tone = models.CharField(max_length=120, blank=True)
+    scope = models.CharField(max_length=10, default='full')
+    shorten_percent = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    undone_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['project', 'chapter_number', 'undone_at']),
+        ]
+        verbose_name = 'Historial de Reescritura de Capítulo'
+
+    def __str__(self):
+        return f"RewriteHistory:{self.project_id}:ch{self.chapter_number}"
+
+
 class UserResource(models.Model):
     """
     Stores user-provided knowledge sources (PDF files or web URLs).

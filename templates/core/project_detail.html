@@ -2,8 +2,96 @@
 {% load core_extras humanize %}
 {% block title %}{{ project.title|default:"Proyecto" }} · MagicBook{% endblock %}
 
+{% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  .step-glow {
+    animation: stepGlow 1.6s ease-in-out infinite;
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.35);
+  }
+  @keyframes stepGlow {
+    0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.45); }
+    70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+  }
+  .ghost-reader {
+    font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    background: #111111;
+  }
+  .chapter-stagger {
+    opacity: 0;
+    transform: translateY(6px);
+    animation: chapterIn .32s ease forwards;
+  }
+  @keyframes chapterIn {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .ai-writing-pulse {
+    border-image: linear-gradient(120deg, #4f46e5, #a855f7, #4f46e5) 1;
+    animation: aiPulse 1.4s linear infinite;
+  }
+  @keyframes aiPulse {
+    0% { filter: drop-shadow(0 0 0 rgba(99, 102, 241, .0)); }
+    50% { filter: drop-shadow(0 0 8px rgba(99, 102, 241, .45)); }
+    100% { filter: drop-shadow(0 0 0 rgba(99, 102, 241, .0)); }
+  }
+  .magic-particle {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #a78bfa, #34d399);
+    opacity: .7;
+    animation: floatMagic 1.4s ease-in-out infinite;
+  }
+  .magic-particle:nth-child(2) { animation-delay: .15s; }
+  .magic-particle:nth-child(3) { animation-delay: .3s; }
+  .magic-particle:nth-child(4) { animation-delay: .45s; }
+  .magic-particle:nth-child(5) { animation-delay: .6s; }
+  @keyframes floatMagic {
+    0% { transform: translateY(8px) scale(.8); opacity: .2; }
+    50% { transform: translateY(-4px) scale(1); opacity: .95; }
+    100% { transform: translateY(8px) scale(.8); opacity: .2; }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 py-8" id="project-app" data-project-id="{{ project.pk }}">
+<div class="max-w-7xl mx-auto px-4 py-8 xl:pl-72" id="project-app" data-project-id="{{ project.pk }}">
+
+  <aside class="hidden xl:block fixed left-4 top-24 w-60 bg-zinc-900/85 border border-zinc-800 rounded-2xl p-4 backdrop-blur" aria-label="StepIndicator">
+    <div class="mb-3">
+      <p class="text-[11px] uppercase tracking-wider text-indigo-300 font-semibold">StepIndicator</p>
+      <p class="text-xs text-zinc-500">{{ launch_done_count }}/16 completados</p>
+    </div>
+    <div class="space-y-1.5">
+      {% for node in launch_map_nodes %}
+      <div class="flex items-start gap-2.5">
+        <div class="pt-0.5 flex flex-col items-center">
+          <span class="w-5 h-5 rounded-full border text-[10px] font-bold flex items-center justify-center
+            {% if node.status == 'done' %}border-emerald-600 text-emerald-400 bg-emerald-900/30
+            {% elif node.status == 'active' %}border-indigo-500 text-indigo-300 bg-indigo-900/30 step-glow
+            {% else %}border-zinc-700 text-zinc-500 bg-zinc-900{% endif %}">
+            {% if node.status == 'done' %}✓{% elif node.status == 'active' %}•{% else %}🔒{% endif %}
+          </span>
+          {% if not forloop.last %}
+          <span class="w-px h-4 {% if node.status == 'done' %}bg-emerald-700{% elif node.status == 'active' %}bg-indigo-700{% else %}bg-zinc-700{% endif %}"></span>
+          {% endif %}
+        </div>
+        <div>
+          <p class="text-xs font-medium {% if node.status == 'done' %}text-emerald-400{% elif node.status == 'active' %}text-indigo-300{% else %}text-zinc-500{% endif %}">
+            {{ node.label }}
+          </p>
+          <p class="text-[10px] text-zinc-600 leading-tight">{% if node.status == 'done' %}Verified{% elif node.status == 'active' %}Active{% else %}Locked{% endif %}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </aside>
 
   <!-- Back + Header -->
   <div class="mb-6">
@@ -12,7 +100,7 @@
   <div class="mb-4 flex justify-end">
     <a href="{% url 'core:project_factory' project.pk %}"
        class="text-xs bg-violet-700 hover:bg-violet-600 text-white font-semibold px-3 py-2 rounded-lg transition-colors">
-      ⚙️ Abrir Fábrica 15
+      ⚙️ Abrir Fábrica 16
     </a>
   </div>
   <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
@@ -31,6 +119,86 @@
         <span>⚡</span> Generar Todo
       </button>
       {% endif %}
+    </div>
+  </div>
+
+  <div class="mb-6 bg-gray-900 border border-violet-700/40 rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <p class="text-xs uppercase tracking-wider text-violet-300 font-semibold">Navegación guiada</p>
+      <h2 class="text-lg font-bold text-gray-100 mt-1">{{ next_step.title }}</h2>
+      <p class="text-sm text-gray-400 mt-1">{{ next_step.description }}</p>
+    </div>
+    <div class="shrink-0">
+      <span class="inline-flex items-center gap-1 text-[11px] border border-emerald-700/50 bg-emerald-900/20 text-emerald-400 px-2 py-1 rounded-full mr-2">
+        ● Optimizada para Conversión
+      </span>
+      {% if next_step.action_type == 'generate' %}
+      <button onclick="generateModule('{{ next_step.module }}', {{ project.pk }})"
+              class="w-full md:w-auto bg-violet-600 hover:bg-violet-700 text-white font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm">
+        {{ next_step.button }}
+      </button>
+      {% else %}
+      <a href="{% url next_step.url_name project.pk %}"
+         class="block w-full md:w-auto text-center bg-violet-600 hover:bg-violet-700 text-white font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm">
+        {{ next_step.button }}
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="mb-8 bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden" id="the-lab">
+    <div class="px-4 py-3 border-b border-gray-800 flex items-center justify-between gap-3">
+      <div>
+        <p class="text-xs uppercase tracking-wider text-violet-300 font-semibold">The Lab</p>
+        <h3 class="text-base font-bold text-gray-100">Editor Dual (Input + Live Canvas)</h3>
+      </div>
+      <div class="flex items-center gap-2 text-[11px]">
+        <button type="button" id="lab-tab-input" class="px-2.5 py-1 rounded-lg border border-violet-600 bg-violet-900/30 text-violet-300">Input</button>
+        <button type="button" id="lab-tab-canvas" class="px-2.5 py-1 rounded-lg border border-gray-700 text-gray-400">Canvas</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2" id="lab-panels-wrap">
+      <div class="p-4 border-b lg:border-b-0 lg:border-r border-gray-800" id="lab-panel-input">
+        <label class="text-xs text-gray-400">Input / Prompt</label>
+        <textarea id="lab-prompt-input" rows="8"
+                  class="mt-2 w-full bg-gray-950 border border-gray-700 rounded-xl px-3 py-3 text-sm text-gray-200 focus:outline-none focus:border-violet-500"
+                  placeholder="Describe que quieres mejorar: oferta, capitulo, landing, ads...">Quiero que el capitulo 3 suene mas humano y convierta mejor para {{ project.primary_market }}.</textarea>
+        <div class="mt-3 flex flex-wrap gap-2 text-xs">
+          <button type="button" class="lab-quick bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg px-2.5 py-1.5" data-quick="Haz este texto mas claro y directo.">Mas claro</button>
+          <button type="button" class="lab-quick bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg px-2.5 py-1.5" data-quick="Haz este texto mas emocional y persuasivo.">Mas emocional</button>
+          <button type="button" class="lab-quick bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg px-2.5 py-1.5" data-quick="Adapta este texto para una landing de conversion.">Modo landing</button>
+        </div>
+      </div>
+
+      <div class="p-4" id="lab-panel-canvas">
+        <div class="flex items-center justify-between mb-3">
+          <label class="text-xs text-gray-400">Live Canvas</label>
+          <div class="flex items-center gap-2 text-[11px]">
+            <button type="button" id="canvas-book-btn" class="px-2 py-1 rounded border border-violet-600 bg-violet-900/30 text-violet-300">Libro</button>
+            <button type="button" id="canvas-landing-btn" class="px-2 py-1 rounded border border-gray-700 text-gray-400">Landing</button>
+          </div>
+        </div>
+
+        <div id="live-canvas-book" class="bg-gray-950 border border-gray-700 rounded-2xl p-6 min-h-[240px]">
+          <div class="mx-auto max-w-sm bg-gray-50 text-gray-900 rounded-lg p-4 shadow-2xl">
+            <p class="text-[11px] uppercase tracking-wider text-gray-500">Borrador de capitulo</p>
+            <h4 class="font-bold text-gray-900 mt-1">Vista de hoja digital</h4>
+            <p id="book-preview-text" class="text-sm text-gray-700 mt-3 leading-relaxed">El contenido en vivo aparecera aqui mientras escribes en el panel izquierdo.</p>
+          </div>
+        </div>
+
+        <div id="live-canvas-landing" class="hidden bg-gray-950 border border-gray-700 rounded-2xl p-4 min-h-[240px]">
+          <div class="border border-gray-700 rounded-xl overflow-hidden aspect-video">
+            <div class="h-7 bg-gray-900 border-b border-gray-700 px-3 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-red-500"></span>
+              <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+              <span class="w-2 h-2 rounded-full bg-green-500"></span>
+            </div>
+            <iframe id="live-preview-frame" class="w-full h-[220px] bg-white" sandbox="allow-same-origin"></iframe>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -60,6 +228,22 @@
     </div>
   </div>
   {% endwith %}
+
+  {% if suggestions %}
+  <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+    {% for suggestion in suggestions %}
+    <div class="bg-gray-900 border border-amber-700/40 rounded-xl p-4">
+      <p class="text-[11px] uppercase tracking-wider text-amber-300 font-semibold">Sugerencia IA</p>
+      <h3 class="text-sm font-bold text-gray-100 mt-1">{{ suggestion.title }}</h3>
+      <p class="text-xs text-gray-400 mt-2">{{ suggestion.detail }}</p>
+      <button onclick="generateModule('{{ suggestion.module }}', {{ project.pk }})"
+              class="mt-3 w-full text-xs bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 rounded-lg transition-colors">
+        {{ suggestion.cta }}
+      </button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
 
   <!-- 4-column grid -->
   <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -432,7 +616,7 @@
               <!-- Chapters -->
               <div class="space-y-2">
                 {% for ch in ol.chapters %}
-                <div class="bg-gray-800 rounded-lg p-3">
+                <div class="bg-gray-800 rounded-lg p-3 chapter-stagger">
                   <div class="flex items-start gap-3">
                     <span class="text-blue-500 font-extrabold text-sm flex-shrink-0 w-6">{{ ch.number }}.</span>
                     <div class="flex-1 min-w-0">
@@ -819,6 +1003,11 @@
                 id="write-btn-{{ chapter_num }}">
           {% if chapter_num in written_chapters %}↻ Reescribir{% else %}Escribir{% endif %}
         </button>
+        <button onclick="undoChapterRewrite({{ project.pk }}, {{ chapter_num }}, this)"
+                class="shrink-0 text-xs border border-zinc-700 hover:border-amber-500 text-zinc-400 hover:text-amber-300 font-semibold px-3 py-1.5 rounded-lg transition-all {% if chapter_num not in undo_available_chapters %}hidden{% endif %}"
+                id="undo-btn-{{ chapter_num }}">
+          ↶ Undo
+        </button>
       </div>
       {% endwith %}
       {% endfor %}
@@ -831,7 +1020,7 @@
         <button onclick="document.getElementById('chapter-preview').classList.add('hidden')"
                 class="text-gray-500 hover:text-gray-300 text-xs">✕ Cerrar</button>
       </div>
-      <div id="preview-content" class="prose prose-invert prose-sm max-w-none text-gray-300 leading-relaxed"></div>
+      <div id="preview-content" class="ghost-reader prose prose-invert prose-sm max-w-none text-gray-200 leading-relaxed border border-zinc-700 rounded-xl p-4"></div>
     </div>
   </div>
   {% endif %}
@@ -852,9 +1041,18 @@
 <!-- Loading overlay -->
 <div id="loading-overlay" class="hidden fixed inset-0 bg-gray-950/80 backdrop-blur-sm z-50 flex items-center justify-center">
   <div class="bg-gray-900 border border-gray-700 rounded-2xl p-8 max-w-sm w-full mx-4 text-center">
-    <div class="w-12 h-12 border-4 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+    <div class="flex items-end justify-center gap-2 mb-4 h-8">
+      <span class="magic-particle"></span>
+      <span class="magic-particle"></span>
+      <span class="magic-particle"></span>
+      <span class="magic-particle"></span>
+      <span class="magic-particle"></span>
+    </div>
     <h3 class="font-bold text-gray-100 mb-2" id="loading-title">Generando con IA...</h3>
     <p class="text-gray-400 text-sm" id="loading-desc">Esto puede tomar 15-30 segundos</p>
+    <div class="mt-4 bg-gray-800 rounded-full h-2 overflow-hidden">
+      <div id="magic-loading-bar" class="h-2 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-emerald-400 transition-all" style="width: 18%"></div>
+    </div>
   </div>
 </div>
 
@@ -866,8 +1064,152 @@
   // Pass step labels to the template context
   const stepLabels = {{ step_labels_json|safe }};
 
+  // ── The Lab Split View ────────────────────────────────────────
+  const labInputTab = document.getElementById('lab-tab-input');
+  const labCanvasTab = document.getElementById('lab-tab-canvas');
+  const labInputPanel = document.getElementById('lab-panel-input');
+  const labCanvasPanel = document.getElementById('lab-panel-canvas');
+  const labPanelsWrap = document.getElementById('lab-panels-wrap');
+  const labPromptInput = document.getElementById('lab-prompt-input');
+  const bookPreviewText = document.getElementById('book-preview-text');
+  const landingPreviewText = document.getElementById('landing-preview-text');
+  const livePreviewFrame = document.getElementById('live-preview-frame');
+  const canvasBookBtn = document.getElementById('canvas-book-btn');
+  const canvasLandingBtn = document.getElementById('canvas-landing-btn');
+  const liveCanvasBook = document.getElementById('live-canvas-book');
+  const liveCanvasLanding = document.getElementById('live-canvas-landing');
+
+  function setLabTab(tabName) {
+    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+    if (!isMobile || !labInputPanel || !labCanvasPanel || !labInputTab || !labCanvasTab) return;
+
+    if (tabName === 'canvas') {
+      labInputPanel.classList.add('hidden');
+      labCanvasPanel.classList.remove('hidden');
+      labInputTab.classList.remove('border-violet-600', 'bg-violet-900/30', 'text-violet-300');
+      labInputTab.classList.add('border-gray-700', 'text-gray-400');
+      labCanvasTab.classList.add('border-violet-600', 'bg-violet-900/30', 'text-violet-300');
+      labCanvasTab.classList.remove('border-gray-700', 'text-gray-400');
+    } else {
+      labCanvasPanel.classList.add('hidden');
+      labInputPanel.classList.remove('hidden');
+      labCanvasTab.classList.remove('border-violet-600', 'bg-violet-900/30', 'text-violet-300');
+      labCanvasTab.classList.add('border-gray-700', 'text-gray-400');
+      labInputTab.classList.add('border-violet-600', 'bg-violet-900/30', 'text-violet-300');
+      labInputTab.classList.remove('border-gray-700', 'text-gray-400');
+    }
+  }
+
+  function syncLiveCanvas(text) {
+    if (bookPreviewText) {
+      bookPreviewText.textContent = text || 'El contenido en vivo aparecera aqui mientras escribes en el panel izquierdo.';
+    }
+    if (landingPreviewText) {
+      landingPreviewText.textContent = text || 'Tu propuesta de valor se renderiza en tiempo real para validar claridad.';
+    }
+    if (livePreviewFrame) {
+      const safeText = (text || 'Tu propuesta de valor se renderiza en tiempo real para validar claridad.')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      livePreviewFrame.srcdoc = `<!doctype html><html><body style="margin:0;font-family:Inter,system-ui;background:#ffffff;color:#18181b"><main style="padding:20px"><h2 style="margin:0 0 8px;font-size:20px">Preview IA</h2><p style="font-size:14px;line-height:1.6">${safeText}</p><button style="margin-top:12px;background:#4f46e5;color:white;border:0;padding:8px 12px;border-radius:8px;font-weight:600">CTA</button></main></body></html>`;
+    }
+  }
+
+  function setCanvasMode(mode) {
+    if (!liveCanvasBook || !liveCanvasLanding || !canvasBookBtn || !canvasLandingBtn) return;
+    if (mode === 'landing') {
+      liveCanvasBook.classList.add('hidden');
+      liveCanvasLanding.classList.remove('hidden');
+      canvasBookBtn.classList.remove('border-violet-600', 'bg-violet-900/30', 'text-violet-300');
+      canvasBookBtn.classList.add('border-gray-700', 'text-gray-400');
+      canvasLandingBtn.classList.add('border-violet-600', 'bg-violet-900/30', 'text-violet-300');
+      canvasLandingBtn.classList.remove('border-gray-700', 'text-gray-400');
+    } else {
+      liveCanvasLanding.classList.add('hidden');
+      liveCanvasBook.classList.remove('hidden');
+      canvasLandingBtn.classList.remove('border-violet-600', 'bg-violet-900/30', 'text-violet-300');
+      canvasLandingBtn.classList.add('border-gray-700', 'text-gray-400');
+      canvasBookBtn.classList.add('border-violet-600', 'bg-violet-900/30', 'text-violet-300');
+      canvasBookBtn.classList.remove('border-gray-700', 'text-gray-400');
+    }
+  }
+
+  if (labPromptInput) {
+    syncLiveCanvas(labPromptInput.value.trim());
+    labPromptInput.addEventListener('input', () => syncLiveCanvas(labPromptInput.value.trim()));
+
+    const mentionMenu = document.createElement('div');
+    mentionMenu.id = 'prompt-mentions';
+    mentionMenu.className = 'hidden absolute z-20 bg-zinc-900 border border-zinc-700 rounded-lg p-1 text-xs';
+    mentionMenu.innerHTML = '<button type="button" class="mention-item block w-full text-left px-2 py-1 hover:bg-zinc-800 rounded" data-insert="@avatar_principal ">@avatar_principal</button><button type="button" class="mention-item block w-full text-left px-2 py-1 hover:bg-zinc-800 rounded" data-insert="@producto_actual ">@producto_actual</button>';
+    labPromptInput.parentElement.style.position = 'relative';
+    labPromptInput.parentElement.appendChild(mentionMenu);
+
+    mentionMenu.querySelectorAll('.mention-item').forEach((item) => {
+      item.addEventListener('click', () => {
+        const insert = item.dataset.insert || '';
+        const start = labPromptInput.selectionStart || 0;
+        const end = labPromptInput.selectionEnd || 0;
+        const before = labPromptInput.value.slice(0, start);
+        const after = labPromptInput.value.slice(end);
+        labPromptInput.value = `${before}${insert}${after}`;
+        mentionMenu.classList.add('hidden');
+        labPromptInput.focus();
+        syncLiveCanvas(labPromptInput.value.trim());
+      });
+    });
+
+    labPromptInput.addEventListener('keyup', () => {
+      const current = labPromptInput.value;
+      const caret = labPromptInput.selectionStart || 0;
+      const lookback = current.slice(Math.max(0, caret - 16), caret);
+      if (lookback.includes('@')) {
+        mentionMenu.classList.remove('hidden');
+        mentionMenu.style.top = `${labPromptInput.offsetTop + 6}px`;
+        mentionMenu.style.right = '8px';
+      } else {
+        mentionMenu.classList.add('hidden');
+      }
+    });
+  }
+
+  document.querySelectorAll('.lab-quick').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!labPromptInput) return;
+      labPromptInput.value = btn.dataset.quick || '';
+      syncLiveCanvas(labPromptInput.value.trim());
+      labPromptInput.focus();
+    });
+  });
+
+  if (labInputTab) labInputTab.addEventListener('click', () => setLabTab('input'));
+  if (labCanvasTab) labCanvasTab.addEventListener('click', () => setLabTab('canvas'));
+  if (canvasBookBtn) canvasBookBtn.addEventListener('click', () => setCanvasMode('book'));
+  if (canvasLandingBtn) canvasLandingBtn.addEventListener('click', () => setCanvasMode('landing'));
+
+  if (window.matchMedia('(max-width: 1023px)').matches) {
+    setLabTab('input');
+  }
+
+  // Mobile-first swipe for quick panel switching in The Lab
+  let touchStartX = 0;
+  if (labPanelsWrap) {
+    labPanelsWrap.addEventListener('touchstart', (ev) => {
+      touchStartX = ev.changedTouches[0].clientX;
+    });
+    labPanelsWrap.addEventListener('touchend', (ev) => {
+      const deltaX = ev.changedTouches[0].clientX - touchStartX;
+      if (Math.abs(deltaX) < 45) return;
+      if (deltaX < 0) setLabTab('canvas');
+      else setLabTab('input');
+    });
+  }
+
   // ── Chapter Writer ─────────────────────────────────────────────
   const CSRF = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+  document.querySelectorAll('.chapter-stagger').forEach((el, index) => {
+    el.style.animationDelay = `${(index * 0.05).toFixed(2)}s`;
+  });
   let totalChapters = document.querySelectorAll('.chapter-row').length;
   let writtenCount  = {{ written_count }};
 
@@ -887,7 +1229,7 @@
     row.classList.add('opacity-60');
 
     try {
-      const resp = await fetch(`/api/write/chapter/${projectPk}/${chapterNum}/`, {
+      const resp = await fetch(`/dashboard/api/write/chapter/${projectPk}/${chapterNum}/`, {
         method : 'POST',
         headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
       });
@@ -910,16 +1252,30 @@
         if (writtenCount < totalChapters) { writtenCount++; }
         updateBadge();
 
+        const undoBtn = document.getElementById(`undo-btn-${chapterNum}`);
+        if (undoBtn) undoBtn.classList.remove('hidden');
+
         // Show preview
         const preview = document.getElementById('chapter-preview');
         const previewTitle   = document.getElementById('preview-title');
         const previewContent = document.getElementById('preview-content');
         previewTitle.textContent = `Capítulo ${chapterNum}: ${data.title}`;
         // Convert basic markdown bold/newlines to HTML
-        previewContent.innerHTML = data.content
-          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-          .replace(/^#+\s(.+)$/gm, '<h3 class="text-gray-100 font-bold mt-4 mb-2">$1</h3>')
-          .replace(/\n/g, '<br>');
+        const blocks = data.content
+          .split(/\n\s*\n/)
+          .map((block) => block.trim())
+          .filter(Boolean);
+        previewContent.innerHTML = blocks.map((block, index) => {
+          const html = block
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/^#+\s(.+)$/gm, '<h3 class="text-zinc-100 font-bold mt-4 mb-2">$1</h3>')
+            .replace(/\n/g, '<br>');
+          const escaped = encodeURIComponent(block);
+          return `<div class="mb-4 border-b border-zinc-800 pb-3"><p class="text-zinc-200 leading-relaxed">${html}</p><button type="button" class="quick-rewrite-btn mt-2 text-[11px] border border-zinc-700 hover:border-indigo-500 text-zinc-400 hover:text-indigo-300 px-2 py-1 rounded" data-paragraph="${escaped}" data-index="${index}">Quick Rewrite</button></div>`;
+        }).join('');
+        previewContent.querySelectorAll('.quick-rewrite-btn').forEach((button) => {
+          button.addEventListener('click', () => rewriteParagraph({ projectPk, button }));
+        });
         preview.classList.remove('hidden');
         preview.scrollIntoView({behavior: 'smooth', block: 'start'});
       } else {
@@ -938,6 +1294,84 @@
     }
   }
 
+  async function undoChapterRewrite(projectPk, chapterNum, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Deshaciendo...';
+    try {
+      const resp = await fetch(`/dashboard/api/rewrite/chapter/${projectPk}/undo/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
+        body: JSON.stringify({ chapter_num: chapterNum }),
+      });
+      const data = await resp.json();
+      if (!data.success) {
+        throw new Error(data.error || 'No se pudo deshacer');
+      }
+
+      const wcBadge = document.getElementById(`wc-badge-${chapterNum}`);
+      if (wcBadge) {
+        wcBadge.textContent = `${data.word_count} palabras`;
+        wcBadge.classList.remove('hidden');
+      }
+
+      const previewTitle = document.getElementById('preview-title');
+      const previewContent = document.getElementById('preview-content');
+      const chapterPreviewVisible =
+        previewTitle &&
+        previewContent &&
+        previewTitle.textContent.toLowerCase().includes(`capítulo ${chapterNum}`.toLowerCase());
+      if (chapterPreviewVisible && previewContent) {
+        previewContent.innerHTML = (data.restored || '')
+          .split(/\n\s*\n/)
+          .map((block) => block.trim())
+          .filter(Boolean)
+          .map((block) => `<p class="mb-3">${block.replace(/\n/g, '<br>')}</p>`)
+          .join('');
+      }
+
+      if (!data.can_undo_again) {
+        btn.classList.add('hidden');
+      }
+      btn.textContent = '↶ Undo';
+    } catch (err) {
+      btn.textContent = '↶ Undo';
+      alert(`Error al deshacer: ${err.message}`);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function rewriteParagraph({ projectPk, button }) {
+    const original = decodeURIComponent(button.dataset.paragraph || '');
+    const toneHint = (labPromptInput?.value || 'mas claro y directo').slice(0, 180);
+    button.disabled = true;
+    button.textContent = 'Reescribiendo...';
+    try {
+      const resp = await fetch(`/dashboard/api/rewrite/paragraph/${projectPk}/`, {
+        method: 'POST',
+        headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
+        body: JSON.stringify({ paragraph: original, tone: toneHint, context: `Proyecto: ${document.title}` }),
+      });
+      const data = await resp.json();
+      if (!data.success) throw new Error(data.error || 'No se pudo reescribir');
+      const wrapper = button.closest('div');
+      const textNode = wrapper?.querySelector('p');
+      if (textNode) {
+        textNode.innerHTML = (data.rewritten || '')
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\n/g, '<br>');
+      }
+      button.textContent = '✓ Reescrito';
+    } catch (err) {
+      button.textContent = 'Error';
+    } finally {
+      window.setTimeout(() => {
+        button.disabled = false;
+        button.textContent = 'Quick Rewrite';
+      }, 1400);
+    }
+  }
+
   // ── Write ALL Chapters (SSE Fábrica) ──────────────────────────
   function writeAllChapters(projectPk) {
     const btn         = document.getElementById('factory-btn');
@@ -952,7 +1386,7 @@
     progressWrap.classList.remove('hidden');
     statusText.textContent = 'Conectando con la IA…';
 
-    const evtSource = new EventSource(`/api/write/all-chapters/${projectPk}/`);
+    const evtSource = new EventSource(`/dashboard/api/write/all-chapters/${projectPk}/`);
 
     evtSource.onmessage = function(e) {
       const d = JSON.parse(e.data);
@@ -1069,7 +1503,7 @@
     statusEl.textContent = '';
 
     try {
-      const resp = await fetch(`/api/resources/${projectPk}/upload/`, {
+      const resp = await fetch(`/dashboard/api/resources/${projectPk}/upload/`, {
         method : 'POST',
         headers: {'X-CSRFToken': CSRF},
         body   : formData,
@@ -1121,7 +1555,7 @@
   async function deleteResource(resourcePk) {
     if (!confirm('¿Eliminar esta fuente de conocimiento?')) return;
     try {
-      const resp = await fetch(`/api/resources/${resourcePk}/delete/`, {
+      const resp = await fetch(`/dashboard/api/resources/${resourcePk}/delete/`, {
         method : 'POST',
         headers: {'X-CSRFToken': CSRF},
       });

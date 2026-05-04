@@ -7,6 +7,42 @@
     <p class="text-emerald-300 text-xs font-semibold tracking-wider uppercase">Plan A · USD29/mes</p>
     <h1 class="text-2xl font-extrabold text-gray-100 mt-1">Qué pasa después de comprar</h1>
     <p class="text-gray-300 text-sm mt-2">Flujo activado: credenciales enviadas, acceso inmediato y lanzamiento del primer producto hoy.</p>
+
+    <div class="mt-5">
+      {% if step1_done and step2_done and step3_done %}
+        <div class="flex items-center justify-between text-xs text-emerald-300 mb-1">
+          <span>Activación completa</span>
+          <span>100%</span>
+        </div>
+        <div class="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+          <div class="h-2 bg-gradient-to-r from-emerald-500 to-teal-400" style="width: 100%"></div>
+        </div>
+      {% elif step1_done and step2_done %}
+        <div class="flex items-center justify-between text-xs text-violet-300 mb-1">
+          <span>Te falta un paso</span>
+          <span>66%</span>
+        </div>
+        <div class="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+          <div class="h-2 bg-gradient-to-r from-violet-500 to-fuchsia-400" style="width: 66%"></div>
+        </div>
+      {% elif step1_done or step2_done %}
+        <div class="flex items-center justify-between text-xs text-violet-300 mb-1">
+          <span>Activación en progreso</span>
+          <span>33%</span>
+        </div>
+        <div class="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+          <div class="h-2 bg-gradient-to-r from-violet-500 to-fuchsia-400" style="width: 33%"></div>
+        </div>
+      {% else %}
+        <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
+          <span>Arranca tu activación</span>
+          <span>0%</span>
+        </div>
+        <div class="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+          <div class="h-2 bg-gray-700" style="width: 0%"></div>
+        </div>
+      {% endif %}
+    </div>
   </div>
 
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -63,6 +99,23 @@
       <p class="text-[11px] text-gray-500 mt-2">Primer proyecto: {{ enrollment.first_project_launched_at|date:"d/m/Y H:i" }}</p>
       {% endif %}
     </div>
+  </div>
+
+  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-4">
+    <p class="text-xs uppercase tracking-wider text-gray-500 font-semibold mb-1">Próxima acción sugerida</p>
+    {% if has_project %}
+      <h3 class="text-lg font-bold text-gray-100 mb-2">Sigue con tu producto activo</h3>
+      <p class="text-sm text-gray-400 mb-4">Ya tienes un proyecto creado. Entra al dashboard y continúa con el próximo módulo pendiente.</p>
+      <a href="{% url 'core:dashboard' %}" class="block w-full text-center text-sm bg-emerald-700 hover:bg-emerald-600 text-white font-semibold py-3 rounded-xl">
+        Ir al Dashboard
+      </a>
+    {% else %}
+      <h3 class="text-lg font-bold text-gray-100 mb-2">Lanza tu primer producto ahora</h3>
+      <p class="text-sm text-gray-400 mb-4">Empieza por crear tu proyecto con nicho, voz de marca y mercado principal.</p>
+      <a href="{% url 'core:project_create' %}" class="block w-full text-center text-sm bg-violet-700 hover:bg-violet-600 text-white font-semibold py-3 rounded-xl">
+        Crear mi primer producto
+      </a>
+    {% endif %}
   </div>
 
   <div class="text-center">

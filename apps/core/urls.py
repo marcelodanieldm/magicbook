@@ -31,6 +31,9 @@ urlpatterns = [
 
     # Chapter Writer — Fase 2 (one chapter per call)
     path('api/write/chapter/<int:pk>/<int:chapter_num>/', views.WriteChapterView.as_view(), name='write_chapter'),
+    path('api/rewrite/paragraph/<int:pk>/', views.RewriteParagraphView.as_view(), name='rewrite_paragraph'),
+    path('api/rewrite/chapter/<int:pk>/', views.RewriteChapterView.as_view(), name='rewrite_chapter'),
+    path('api/rewrite/chapter/<int:pk>/undo/', views.UndoChapterRewriteView.as_view(), name='undo_rewrite_chapter'),
 
     # Chapter Writer — Fábrica (write ALL chapters sequentially, SSE stream)
     path('api/write/all-chapters/<int:pk>/', views.WriteAllChaptersView.as_view(), name='write_all_chapters'),

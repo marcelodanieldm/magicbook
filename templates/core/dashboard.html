@@ -4,6 +4,40 @@
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-10">
 
+  <div class="mb-6 bg-gradient-to-r from-violet-900/30 via-gray-900 to-emerald-900/20 border border-violet-700/40 rounded-2xl p-5">
+    <div class="flex flex-col lg:flex-row lg:items-start gap-5">
+      <div class="flex-1">
+        <p class="text-xs uppercase tracking-wider text-violet-300 font-semibold mb-2">Plan A · USD29/mes</p>
+        <h2 class="text-xl font-extrabold text-gray-100 mb-2">Tu próximo paso está acá</h2>
+        <p class="text-sm text-gray-400 mb-4">Sigue este camino para llegar rápido a tu primer producto vendible.</p>
+
+        <div class="space-y-2">
+          {% for step in quickstart_steps %}
+          <div class="flex items-start gap-3 bg-gray-900/70 border {% if step.done %}border-emerald-700/50{% else %}border-gray-700{% endif %} rounded-xl px-3 py-2">
+            <span class="text-sm mt-0.5 {% if step.done %}text-emerald-400{% else %}text-gray-500{% endif %}">{% if step.done %}✓{% else %}○{% endif %}</span>
+            <div>
+              <p class="text-sm font-semibold {% if step.done %}text-emerald-300{% else %}text-gray-200{% endif %}">{{ step.label }}</p>
+              <p class="text-xs text-gray-500">{{ step.hint }}</p>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="lg:w-72 bg-gray-950/70 border border-gray-800 rounded-xl p-4">
+        <div class="text-center mb-3">
+          <p class="text-xs text-gray-500 uppercase tracking-wider">Progreso de activación</p>
+          <p class="text-3xl font-extrabold gradient-text">{{ quickstart_done_count }}/3</p>
+        </div>
+        <a href="{% if primary_cta.args %}{% url primary_cta.url primary_cta.args.0 %}{% else %}{% url primary_cta.url %}{% endif %}"
+           class="block text-center bg-violet-600 hover:bg-violet-700 text-white font-bold px-4 py-3 rounded-xl transition-colors">
+          {{ primary_cta.label }}
+        </a>
+        <p class="text-xs text-gray-500 text-center mt-3">{{ primary_cta.helper }}</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Header -->
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
     <div>
@@ -19,8 +53,7 @@
   {% if projects %}
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
       {% for project in projects %}
-      <a href="{% url 'core:project_detail' project.pk %}"
-         class="bg-gray-900 border border-gray-800 card-hover rounded-xl p-6 block group">
+      <div class="bg-gray-900 border border-gray-800 card-hover rounded-xl p-6 group">
         <!-- Status badge -->
         <div class="flex items-center justify-between mb-4">
           <span class="text-xs font-semibold px-3 py-1 rounded-full
@@ -33,31 +66,57 @@
         </div>
 
         <!-- Title -->
-        <h2 class="font-bold text-gray-100 text-lg leading-snug mb-2 group-hover:text-violet-300 transition-colors">
-          {{ project.title|default:"Sin título aún" }}
-        </h2>
-        <p class="text-gray-500 text-sm line-clamp-2 mb-5">{{ project.niche_input }}</p>
+        <a href="{% url 'core:project_detail' project.pk %}" class="block">
+          <h2 class="font-bold text-gray-100 text-lg leading-snug mb-2 group-hover:text-violet-300 transition-colors">
+            {{ project.title|default:"Sin título aún" }}
+          </h2>
+        </a>
+        <p class="text-gray-500 text-sm line-clamp-2 mb-4">{{ project.niche_input }}</p>
 
         <!-- Progress bar -->
         <div class="mb-1 flex items-center justify-between text-xs text-gray-500">
-          <span>Progreso del Motor</span>
-          <span>{{ project.completion_percentage }}%</span>
+          <span>Mapa de Lanzamiento</span>
+          <span>{{ project.launch_done_count }}/16</span>
         </div>
         <div class="w-full bg-gray-800 rounded-full h-2">
           <div class="bg-gradient-to-r from-violet-600 to-pink-500 h-2 rounded-full transition-all"
-               style="width: {{ project.completion_percentage }}%"></div>
+               style="width: {% widthratio project.launch_done_count 16 100 %}%"></div>
         </div>
 
-        <!-- Step indicators -->
-        <div class="mt-4 flex gap-2">
-          {% with steps=project.steps_completed %}
-          <span title="Análisis de Nicho" class="flex-1 h-1 rounded-full {% if steps >= 1 %}bg-violet-500{% else %}bg-gray-700{% endif %}"></span>
-          <span title="Oferta" class="flex-1 h-1 rounded-full {% if steps >= 2 %}bg-violet-500{% else %}bg-gray-700{% endif %}"></span>
-          <span title="Índice" class="flex-1 h-1 rounded-full {% if steps >= 3 %}bg-violet-500{% else %}bg-gray-700{% endif %}"></span>
-          <span title="Copies" class="flex-1 h-1 rounded-full {% if steps >= 4 %}bg-violet-500{% else %}bg-gray-700{% endif %}"></span>
-          {% endwith %}
+        <!-- Launch map nodes -->
+        <div class="mt-4 overflow-x-auto pb-2">
+          <div class="min-w-max flex items-center">
+            {% for node in project.launch_map_nodes %}
+              {% if not forloop.first %}
+              <div class="w-5 h-px {% if node.status == 'pending' %}bg-gray-700{% else %}bg-violet-600{% endif %}"></div>
+              {% endif %}
+              <div class="relative group/node">
+                <div class="w-7 h-7 rounded-full border text-[10px] font-bold flex items-center justify-center cursor-default
+                  {% if node.status == 'done' %}bg-emerald-900/50 border-emerald-600 text-emerald-300
+                  {% elif node.status == 'active' %}bg-violet-900/50 border-violet-500 text-violet-300
+                  {% else %}bg-gray-900 border-gray-700 text-gray-500{% endif %}">
+                  {% if node.status == 'done' %}✓{% else %}{{ forloop.counter }}{% endif %}
+                </div>
+                <div class="hidden group-hover/node:block absolute left-1/2 -translate-x-1/2 bottom-10 z-10 w-44 bg-gray-950/95 border border-gray-700 rounded-lg p-2.5 shadow-xl">
+                  <p class="text-[11px] font-semibold text-gray-200">{{ node.label }}</p>
+                  <p class="text-[10px] text-gray-500 mt-1">{{ node.summary }}</p>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
         </div>
-      </a>
+
+        <div class="mt-5 grid grid-cols-2 gap-2">
+          <a href="{% url 'core:project_detail' project.pk %}"
+             class="text-center text-xs bg-violet-700 hover:bg-violet-600 text-white font-semibold py-2 rounded-lg transition-colors">
+            Abrir The Lab
+          </a>
+          <a href="{% url 'core:project_factory' project.pk %}"
+             class="text-center text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 font-semibold py-2 rounded-lg transition-colors">
+            Abrir The Vault
+          </a>
+        </div>
+      </div>
       {% endfor %}
     </div>
 
@@ -74,6 +133,27 @@
         Crear mi primer proyecto →
       </a>
     </div>
+  {% endif %}
+
+  {% if projects %}
+  <div id="vault" class="mt-10">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-extrabold text-gray-100">The Vault</h2>
+      <span class="text-xs text-gray-500">Assets guardados por proyecto</span>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {% for project in projects %}
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <p class="text-sm font-semibold text-gray-100">{{ project.title|default:"Proyecto sin titulo" }}</p>
+        <p class="text-xs text-gray-500 mt-1">Accede a outputs, test runs y artefactos de la fabrica.</p>
+        <div class="mt-3 flex gap-2">
+          <a href="{% url 'core:project_factory' project.pk %}" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1.5 rounded-lg">Fabrica 16</a>
+          <a href="{% url 'core:project_detail' project.pk %}" class="text-xs bg-violet-700 hover:bg-violet-600 text-white px-3 py-1.5 rounded-lg">The Lab</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
   {% endif %}
 
 </div>
