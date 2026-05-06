@@ -1,67 +1,462 @@
 {% extends "base.html" %}
-{% block title %}MagicBook - Transforma tu idea en un negocio de infoproductos{% endblock %}
+{% block title %}{{ lp.page_title }}{% endblock %}
+
+{% block extra_head %}
+<!-- Lucide Icons -->
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --indigo:  79, 70, 229;
+  --violet: 124, 58, 237;
+  --pink:   219, 39, 119;
+}
+body { font-family: 'Inter', ui-sans-serif, system-ui; }
+.lp-divider { border-top: 1px solid rgba(255,255,255,0.055); }
+
+/* HERO */
+.hero-section {
+  min-height: 100svh;
+  display: flex; flex-direction: column; justify-content: center;
+  position: relative; overflow: hidden;
+}
+.hero-section::before {
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% -5%,  rgba(var(--violet),0.38), transparent),
+    radial-gradient(ellipse 40% 30% at 80% 80%,  rgba(var(--pink),0.12), transparent),
+    radial-gradient(ellipse 35% 25% at 10% 60%,  rgba(var(--indigo),0.14), transparent);
+}
+.orb {
+  position:absolute; border-radius:9999px; pointer-events:none;
+  animation: floatOrb 7s ease-in-out infinite;
+}
+@keyframes floatOrb {
+  0%,100%{ transform: translateY(0) scale(1); opacity:.4; }
+  50%    { transform: translateY(-18px) scale(1.06); opacity:.7; }
+}
+
+/* FACTORY */
+.factory-wrap {
+  position:relative; background: rgba(9,9,11,0.7);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 1.5rem; overflow: hidden; backdrop-filter: blur(12px);
+}
+.factory-wrap::after {
+  content:''; position:absolute; inset:-2px;
+  border-radius: calc(1.5rem + 2px);
+  background: conic-gradient(from var(--angle,0deg),
+    rgba(var(--indigo),0) 0%, rgba(var(--violet),0.7) 25%,
+    rgba(var(--pink),0.5) 50%, rgba(var(--indigo),0) 75%);
+  z-index:-1; animation: borderSpin 5s linear infinite;
+}
+@property --angle { syntax:'<angle>'; initial-value:0deg; inherits:false; }
+@keyframes borderSpin { to { --angle: 360deg; } }
+
+.factory-asset {
+  background: rgba(17,24,39,0.8); border: 1px solid rgba(107,114,128,0.2);
+  border-radius: .75rem; padding: .6rem .9rem;
+  font-size: .72rem; font-weight:600; color: #a1a1aa;
+  display:flex; align-items:center; gap:.5rem;
+  transition: border-color .25s, color .25s, box-shadow .25s;
+  animation: assetPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.factory-asset:hover {
+  border-color: rgba(var(--indigo),0.6); color:#e4e4e7;
+  box-shadow: 0 0 14px rgba(var(--indigo),0.25);
+}
+@keyframes assetPop {
+  from{ opacity:0; transform:scale(.7) translateY(8px); }
+  to  { opacity:1; transform:scale(1) translateY(0); }
+}
+.factory-asset-icon { color: #6366f1; flex-shrink:0; }
+.factory-cursor {
+  display:inline-block; width:2px; height:1em;
+  background:#6366f1; margin-left:2px;
+  animation: blink .8s step-end infinite; vertical-align: text-bottom;
+}
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+/* BADGE */
+.sec-badge {
+  display:inline-flex; align-items:center; gap:.4rem;
+  background: rgba(79,70,229,0.12); border: 1px solid rgba(79,70,229,0.35);
+  color: #818cf8; font-size:.68rem; font-weight:700;
+  letter-spacing:.08em; text-transform:uppercase;
+  padding: .3rem 1rem; border-radius:9999px;
+}
+
+/* CTA BUTTONS */
+.btn-primary {
+  display:inline-flex; align-items:center; gap:.6rem;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color:#fff; font-weight:700;
+  padding: 1rem 2.2rem; border-radius:1rem; font-size:1.1rem;
+  transition: opacity .2s, transform .15s, box-shadow .3s;
+  animation: ctaPulse 2.8s ease-in-out infinite;
+}
+.btn-primary:hover { opacity:.92; transform:translateY(-1px); }
+@keyframes ctaPulse {
+  0%,100%{ box-shadow: 0 0  0 0 rgba(var(--violet),0);   }
+  50%    { box-shadow: 0 0 28px 6px rgba(var(--violet),.4); }
+}
+.btn-secondary {
+  display:inline-flex; align-items:center; gap:.5rem;
+  border: 1px solid rgba(255,255,255,0.14); color:#a1a1aa; font-weight:500;
+  padding: 1rem 1.8rem; border-radius:1rem; font-size:1.05rem;
+  transition: border-color .2s, color .2s;
+}
+.btn-secondary:hover { border-color: rgba(var(--indigo),.6); color:#e4e4e7; }
+
+/* FEATURE CARDS */
+.step-card {
+  position:relative; background: rgba(9,9,11,0.6);
+  border: 1px solid rgba(255,255,255,0.07); border-radius: 1.25rem;
+  padding: 1.4rem 1.5rem; display:flex; gap:1rem; align-items:flex-start;
+  overflow: hidden;
+  opacity:0; transform:translateY(28px);
+  transition: opacity .55s ease, transform .55s ease,
+              border-color .25s, box-shadow .25s;
+}
+.step-card.is-visible { opacity:1; transform:translateY(0); }
+.step-card:hover {
+  border-color: rgba(var(--indigo),0.55);
+  box-shadow: 0 0 28px rgba(var(--indigo),0.12), 0 8px 32px rgba(0,0,0,0.4);
+  transform:translateY(-3px);
+}
+.step-card::before {
+  content:''; position:absolute; inset:0; border-radius:1.25rem;
+  background: linear-gradient(135deg, rgba(var(--indigo),0.09), rgba(var(--violet),0.05), transparent);
+  opacity:0; transition: opacity .3s;
+}
+.step-card:hover::before { opacity:1; }
+.step-num {
+  flex-shrink:0; width:2rem; height:2rem;
+  background: linear-gradient(135deg, #312e81, #4f46e5);
+  border-radius:.6rem; display:flex; align-items:center; justify-content:center;
+  font-size:.7rem; font-weight:800; color:#c7d2fe;
+}
+.step-icon { color: #6366f1; flex-shrink:0; margin-top:.15rem; }
+.step-title { font-size:.9rem; font-weight:700; color:#f4f4f5; margin-bottom:.25rem; }
+.step-desc  { font-size:.78rem; color:#71717a; line-height:1.6; }
+
+/* COMPARE TABLE */
+.compare-wrap { border: 1px solid rgba(255,255,255,0.07); border-radius:1.5rem; overflow:hidden; }
+.compare-table { width:100%; border-collapse:collapse; }
+.compare-table thead tr {
+  background: rgba(9,9,11,0.85); border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.compare-table th {
+  padding: 1rem 1.25rem; font-size:.7rem; font-weight:700;
+  letter-spacing:.08em; text-transform:uppercase; text-align:center;
+}
+.compare-table th:first-child { text-align:left; color:#52525b; }
+.th-trad { color:#52525b; }
+.th-magic {
+  color:#818cf8; background: rgba(79,70,229,0.1);
+  border-left: 1px solid rgba(79,70,229,0.3); border-right: 1px solid rgba(79,70,229,0.3);
+}
+.compare-table tbody tr {
+  border-bottom: 1px solid rgba(255,255,255,0.045); transition: background .15s;
+}
+.compare-table tbody tr:last-child { border-bottom:none; }
+.compare-table tbody tr:hover { background: rgba(255,255,255,0.025); }
+.compare-table td { padding: .95rem 1.25rem; font-size:.85rem; vertical-align:middle; }
+.td-label { color:#d4d4d8; font-weight:500; }
+.td-trad  { text-align:center; color:#52525b; }
+.td-magic {
+  text-align:center; color:#a5b4fc; font-weight:600;
+  background: rgba(79,70,229,0.06);
+  border-left: 1px solid rgba(79,70,229,0.18); border-right: 1px solid rgba(79,70,229,0.18);
+}
+.td-magic-check { display:inline-flex; align-items:center; gap:.4rem; }
+.check-green { color: #34d399; }
+
+/* TESTIMONIALS */
+.testi-card {
+  background: rgba(9,9,11,0.6); border: 1px solid rgba(255,255,255,0.07);
+  border-radius:1.25rem; padding:1.5rem;
+  display:flex; flex-direction:column; gap:1rem;
+  transition: border-color .25s, box-shadow .25s;
+}
+.testi-card:hover {
+  border-color: rgba(var(--violet),.35);
+  box-shadow: 0 0 24px rgba(var(--violet),.08);
+}
+.testi-stars { color:#fbbf24; letter-spacing:.1em; font-size:.85rem; }
+.testi-quote { color:#a1a1aa; font-size:.85rem; line-height:1.7; flex:1; }
+.testi-avatar {
+  width:2.4rem; height:2.4rem; border-radius:9999px; flex-shrink:0;
+  background: linear-gradient(135deg,#4f46e5,#7c3aed);
+  display:flex; align-items:center; justify-content:center;
+  font-weight:700; font-size:.8rem; color:#e0e7ff;
+}
+.testi-name   { font-size:.85rem; font-weight:600; color:#e4e4e7; }
+.testi-metric { font-size:.72rem; color:#818cf8; font-weight:500; }
+
+/* CTA FINAL */
+.final-cta-wrap {
+  position:relative;
+  background: linear-gradient(145deg, rgba(79,70,229,.14), rgba(9,9,11,1) 60%, rgba(219,39,119,.08));
+  border: 1px solid rgba(79,70,229,0.25); border-radius:2rem; overflow:hidden; padding:5rem 2rem;
+}
+.final-cta-wrap::before {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(var(--violet),0.2), transparent);
+  pointer-events:none;
+}
+
+/* SCROLL REVEAL */
+.reveal {
+  opacity:0; transform:translateY(24px);
+  transition: opacity .6s ease, transform .6s ease;
+}
+.reveal.is-visible { opacity:1; transform:translateY(0); }
+</style>
+{% endblock %}
 
 {% block content %}
-<!-- Hero -->
-<section class="relative overflow-hidden">
-  <div class="absolute inset-0 bg-gradient-to-br from-violet-900/20 via-gray-950 to-gray-950 pointer-events-none"></div>
-  <div class="max-w-5xl mx-auto px-4 py-24 text-center relative z-10">
-    <div class="inline-flex items-center gap-2 bg-violet-900/30 border border-violet-700/50 text-violet-300 text-xs font-semibold px-4 py-2 rounded-full mb-8">
-      <span class="w-2 h-2 rounded-full bg-violet-400 animate-pulse"></span>
-      MVP Fase 1 — Motor de Ofertas e Investigación
+
+<!-- HERO -->
+<section class="hero-section">
+  <div class="orb w-72 h-72 bg-indigo-600/10 blur-3xl top-10 -left-20" style="animation-delay:0s"></div>
+  <div class="orb w-56 h-56 bg-violet-600/12 blur-3xl bottom-20 right-10" style="animation-delay:2s"></div>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-8 w-full relative z-10 py-20">
+    <div class="grid lg:grid-cols-2 gap-14 items-center">
+
+      <div>
+        <div class="sec-badge mb-7">
+          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+          {{ lp.hero_badge }}
+        </div>
+        <h1 class="text-5xl sm:text-6xl lg:text-7xl font-black leading-[1.04] tracking-tight mb-7">
+          <span class="text-zinc-100">{{ lp.hero_h1a }}</span><br/>
+          <span style="background:linear-gradient(135deg,#818cf8,#c084fc,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">
+            {{ lp.hero_h1b }}<br/>{{ lp.hero_h1c }}
+          </span><br/>
+          <span class="text-zinc-200">{{ lp.hero_h1d }}</span>
+        </h1>
+        <p class="text-zinc-400 text-lg sm:text-xl leading-relaxed mb-10 max-w-lg">
+          {{ lp.hero_p1 }}<br class="hidden sm:block"/>
+          {{ lp.hero_p2 }}<br/>
+          <strong class="text-zinc-200">{{ lp.hero_p3 }}</strong>
+        </p>
+        <div class="flex flex-wrap gap-4 mb-8">
+          <a href="{% url 'accounts:register' %}" class="btn-primary">
+            {{ lp.hero_cta_primary }}
+            <i data-lucide="arrow-right" class="w-5 h-5"></i>
+          </a>
+          <a href="{% url 'accounts:login' %}" class="btn-secondary">{{ lp.hero_cta_secondary }}</a>
+        </div>
+        <p class="text-zinc-600 text-sm">{{ lp.hero_disclaimer }}</p>
+        <div class="flex items-center gap-3 mt-6">
+          <div class="flex -space-x-2">
+            {% for c in "ABCDE" %}<div class="w-7 h-7 rounded-full border-2 border-zinc-950 flex items-center justify-center text-[10px] font-bold text-indigo-200" style="background:linear-gradient(135deg,#4338ca,#7c3aed)">{{ c }}</div>{% endfor %}
+          </div>
+          <p class="text-zinc-500 text-xs"><span class="text-zinc-300 font-semibold">+2,400</span> {{ lp.hero_social_label }}</p>
+        </div>
+      </div>
+
+      <!-- Factory Visual -->
+      <div class="factory-wrap p-6 lg:p-8">
+        <div class="flex items-center gap-1.5 mb-5">
+          <span class="w-3 h-3 rounded-full bg-red-500/70"></span>
+          <span class="w-3 h-3 rounded-full bg-yellow-500/70"></span>
+          <span class="w-3 h-3 rounded-full bg-green-500/70"></span>
+          <span class="ml-3 text-zinc-600 text-xs font-mono">magicbook &middot; factory.ai</span>
+        </div>
+        <div class="bg-zinc-900/80 border border-zinc-800 rounded-xl px-4 py-3 mb-5 flex items-center gap-2">
+          <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400 flex-shrink-0"></i>
+          <span class="text-zinc-300 text-sm font-mono">{{ lp.factory_prompt }}</span><span class="factory-cursor"></span>
+        </div>
+        <div class="flex justify-center mb-5">
+          <div class="flex flex-col items-center gap-1">
+            <div class="w-px h-5 bg-gradient-to-b from-indigo-600 to-violet-600"></div>
+            <div class="sec-badge text-[10px] py-1 px-2 gap-1">
+              <i data-lucide="cpu" class="w-3 h-3"></i> {{ lp.factory_processing }}
+            </div>
+            <div class="w-px h-5 bg-gradient-to-b from-violet-600 to-transparent"></div>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {% for asset in lp.factory_assets %}
+          <div class="factory-asset" style="animation-delay:{{ asset.delay }}"><i data-lucide="{{ asset.icon }}" class="w-3.5 h-3.5 factory-asset-icon"></i> {{ asset.label }}</div>
+          {% endfor %}
+        </div>
+        <div class="mt-5 flex items-center justify-between border-t border-zinc-800/60 pt-3">
+          <span class="text-zinc-600 text-xs font-mono">{{ lp.factory_count }}</span>
+          <span class="flex items-center gap-1 text-green-400 text-xs font-semibold">
+            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> {{ lp.factory_ready }}
+          </span>
+        </div>
+      </div>
     </div>
-    <h1 class="text-5xl sm:text-6xl font-extrabold leading-tight mb-6">
-      De una idea simple a un<br />
-      <span class="gradient-text">ecosistema de infoproductos</span><br />
-      en menos de 15 minutos.
-    </h1>
-    <p class="text-gray-400 text-xl max-w-2xl mx-auto mb-10">
-      MagicBook analiza tu nicho, construye tu oferta irresistible, genera el índice de tu E-book y crea los copies listos para vender — todo con IA.
+  </div>
+</section>
+
+
+<!-- PROBLEMA -->
+<section class="lp-divider">
+  <div class="max-w-3xl mx-auto px-4 py-24 text-center">
+    <div class="sec-badge mb-6" style="background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:#fca5a5;">
+      <i data-lucide="alert-triangle" class="w-3 h-3"></i> {{ lp.prob_badge }}
+    </div>
+    <h2 class="reveal text-4xl sm:text-5xl font-black text-zinc-100 mb-8 leading-tight">
+      {{ lp.prob_h1 }}<br/>
+      <span style="background:linear-gradient(135deg,#f87171,#fb923c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">{{ lp.prob_h2 }}</span>
+      {{ lp.prob_h3 }}
+    </h2>
+    <p class="reveal text-zinc-400 text-lg leading-relaxed mb-10" style="transition-delay:.1s">
+      {{ lp.prob_p }}
     </p>
-    <form id="home-seed-form" class="max-w-3xl mx-auto mb-6">
-      <label for="home-seed-input" class="sr-only">Que quieres vender hoy</label>
-      <textarea id="home-seed-input" rows="3"
-                class="w-full bg-gray-900/90 border-2 border-violet-700/50 focus:border-violet-500 rounded-2xl px-6 py-5 text-lg text-gray-100 placeholder-gray-500 focus:outline-none"
-                placeholder="¿Que quieres vender hoy?"></textarea>
-      <button type="submit"
-              class="mt-4 bg-violet-600 hover:bg-violet-700 glow text-white font-bold px-8 py-4 rounded-xl text-lg transition-all">
-        Entrar a The Lab →
-      </button>
-    </form>
-    <div class="flex flex-col sm:flex-row gap-4 justify-center">
-      <a href="{% url 'accounts:login' %}" class="border border-gray-700 hover:border-gray-500 text-gray-300 font-medium px-8 py-4 rounded-xl text-lg transition-colors">
-        Ya tengo cuenta
+    <div class="reveal bg-gradient-to-r from-red-950/50 via-zinc-900 to-red-950/50 border border-red-900/30 rounded-2xl px-8 py-6 max-w-xl mx-auto" style="transition-delay:.2s">
+      <p class="text-zinc-200 text-xl font-semibold leading-snug">
+        {{ lp.prob_callout_pre }} <span class="text-red-400">{{ lp.prob_callout_styled }}</span>,<br/>
+        {{ lp.prob_callout_post }} &#x1F4C8;
+      </p>
+    </div>
+  </div>
+</section>
+
+
+<!-- SOLUCION -->
+<section class="lp-divider">
+  <div class="max-w-4xl mx-auto px-4 py-24 text-center">
+    <div class="sec-badge mb-6">
+      <i data-lucide="sparkles" class="w-3 h-3"></i> {{ lp.sol_badge }}
+    </div>
+    <h2 class="reveal text-4xl sm:text-5xl font-black text-zinc-100 mb-8 leading-tight">
+      {{ lp.sol_h1 }}<br/>
+      <span style="background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">{{ lp.sol_h2 }}</span>
+    </h2>
+    <p class="reveal text-zinc-400 text-lg leading-relaxed max-w-2xl mx-auto mb-14" style="transition-delay:.1s">
+      {{ lp.sol_p_a }} <strong class="text-zinc-200">{{ lp.sol_p_bold }}</strong> {{ lp.sol_p_b }}<em class="text-indigo-300">{{ lp.sol_p_em }}</em>{{ lp.sol_p_c }}
+    </p>
+    <div class="reveal inline-flex items-center gap-6 bg-gradient-to-r from-indigo-900/30 via-violet-900/20 to-pink-900/20 border border-indigo-700/30 rounded-2xl px-10 py-7" style="transition-delay:.2s">
+      <div class="text-6xl font-black" style="background:linear-gradient(135deg,#818cf8,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">95%</div>
+      <div class="text-left">
+        <div class="text-zinc-100 font-bold text-xl mb-1">{{ lp.sol_stat_label }}</div>
+        <div class="text-zinc-500 text-sm">{{ lp.sol_stat_sub1 }}<br/><span class="text-indigo-300 font-medium">{{ lp.sol_stat_sub2 }}</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- 16 PASOS -->
+<section class="lp-divider" id="como-funciona">
+  <div class="max-w-6xl mx-auto px-4 py-24">
+    <div class="text-center mb-16 reveal">
+      <div class="sec-badge mb-5">
+        <i data-lucide="cpu" class="w-3 h-3"></i> {{ lp.steps_badge }}
+      </div>
+      <h2 class="text-4xl sm:text-5xl font-black text-zinc-100 leading-tight">
+        {{ lp.steps_h1a }} <span style="background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">{{ lp.steps_h1b }}</span><br/>{{ lp.steps_h1c }}
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {% for feature in lp.features %}
+      <div class="step-card" style="transition-delay:{{ forloop.counter0 }}0ms">
+        <div class="step-num">{{ forloop.counter }}</div>
+        <div>
+          <div class="step-icon mb-1.5"><i data-lucide="{{ feature.icon }}" class="w-4 h-4"></i></div>
+          <div class="step-title">{{ feature.title }}</div>
+          <div class="step-desc">{{ feature.desc }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="mt-14 text-center reveal">
+      <a href="{% url 'accounts:register' %}" class="btn-primary text-base px-8 py-3.5">
+        {{ lp.steps_cta }}
+        <i data-lucide="arrow-right" class="w-5 h-5"></i>
       </a>
     </div>
-    <p class="mt-5 text-gray-600 text-sm">Sin tarjeta de crédito · Empieza en 30 segundos</p>
   </div>
 </section>
 
-<!-- Features -->
-<section class="max-w-6xl mx-auto px-4 py-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-  {% for feature in features %}
-  <div class="bg-gray-900 border border-gray-800 card-hover rounded-xl p-6">
-    <div class="text-3xl mb-4">{{ feature.icon }}</div>
-    <h3 class="font-bold text-gray-100 mb-2">{{ feature.title }}</h3>
-    <p class="text-gray-400 text-sm leading-relaxed">{{ feature.desc }}</p>
+
+<!-- TABLA COMPARATIVA -->
+<section class="lp-divider">
+  <div class="max-w-4xl mx-auto px-4 py-24">
+    <div class="text-center mb-16 reveal">
+      <div class="sec-badge mb-5">
+        <i data-lucide="bar-chart-2" class="w-3 h-3"></i> {{ lp.comp_badge }}
+      </div>
+      <h2 class="text-4xl sm:text-5xl font-black text-zinc-100 leading-tight">
+        {{ lp.comp_h1 }}<br/>
+        <span style="background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">{{ lp.comp_h2 }}</span>
+      </h2>
+    </div>
+    <div class="reveal compare-wrap overflow-x-auto" style="transition-delay:.1s">
+      <table class="compare-table">
+        <thead>
+          <tr>
+            <th class="text-left text-zinc-600" style="width:30%">{{ lp.comp_col_challenge }}</th>
+            <th class="th-trad">
+              <span class="inline-flex items-center gap-1.5">
+                <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> {{ lp.comp_col_trad }}
+              </span>
+            </th>
+            <th class="th-magic">
+              <span class="inline-flex items-center justify-center gap-1.5">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i>
+                <span style="background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">{{ lp.comp_col_magic }}</span>
+              </span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in lp.compare_rows %}
+          <tr>
+            <td class="td-label">{{ row.challenge }}</td>
+            <td class="td-trad">
+              <span class="inline-flex items-center justify-center gap-1.5">
+                <i data-lucide="x" class="w-3.5 h-3.5 text-red-600 flex-shrink-0"></i>
+                {{ row.traditional }}
+              </span>
+            </td>
+            <td class="td-magic">
+              <span class="td-magic-check">
+                <i data-lucide="check" class="w-4 h-4 check-green flex-shrink-0"></i>
+                {{ row.magicbook }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
-  {% endfor %}
 </section>
 
-<!-- Steps -->
-<section class="max-w-4xl mx-auto px-4 py-16">
-  <h2 class="text-3xl font-bold text-center mb-12">¿Cómo funciona?</h2>
-  <div class="relative">
-    <div class="absolute left-6 top-0 bottom-0 w-px bg-gradient-to-b from-violet-600 to-transparent hidden sm:block"></div>
-    <div class="space-y-10">
-      {% for step in steps %}
-      <div class="flex gap-6 items-start">
-        <div class="flex-shrink-0 w-12 h-12 rounded-full bg-violet-900/60 border border-violet-700 flex items-center justify-center font-bold text-violet-300 z-10">
-          {{ step.num }}
-        </div>
-        <div class="pt-1">
-          <h3 class="font-bold text-gray-100 mb-1">{{ step.title }}</h3>
-          <p class="text-gray-400 text-sm">{{ step.desc }}</p>
+
+<!-- TESTIMONIALES -->
+<section class="lp-divider">
+  <div class="max-w-5xl mx-auto px-4 py-24">
+    <div class="text-center mb-16 reveal">
+      <div class="sec-badge mb-5">
+        <i data-lucide="message-square" class="w-3 h-3"></i> {{ lp.testi_badge }}
+      </div>
+      <h2 class="text-4xl sm:text-5xl font-black text-zinc-100 leading-tight">
+        {{ lp.testi_h1 }}<br/>
+        <span style="background:linear-gradient(135deg,#818cf8,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">{{ lp.testi_h2 }}</span>
+        {{ lp.testi_h3 }}
+        <span style="background:linear-gradient(135deg,#34d399,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">{{ lp.testi_h4 }}</span>
+      </h2>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for t in lp.testimonials %}
+      <div class="testi-card reveal" style="transition-delay:{{ forloop.counter0 }}5ms">
+        <div class="testi-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <p class="testi-quote">"{{ t.quote }}"</p>
+        <div class="flex items-center gap-3 border-t border-zinc-800/60 pt-3">
+          <div class="testi-avatar">{{ t.initials }}</div>
+          <div>
+            <div class="testi-name">{{ t.name }}</div>
+            <div class="testi-metric">{{ t.metric }}</div>
+          </div>
         </div>
       </div>
       {% endfor %}
@@ -69,32 +464,43 @@
   </div>
 </section>
 
-<!-- CTA bottom -->
-<section class="max-w-3xl mx-auto px-4 py-16 text-center">
-  <div class="bg-gradient-to-br from-violet-900/30 to-gray-900 border border-violet-800/40 rounded-2xl p-12">
-    <h2 class="text-3xl font-bold mb-4">Lanza tu primer infoproducto hoy</h2>
-    <p class="text-gray-400 mb-8">Únete a emprendedores que ya están generando ingresos con infoproductos inteligentes.</p>
-    <a href="{% url 'accounts:register' %}" class="bg-violet-600 hover:bg-violet-700 glow text-white font-bold px-8 py-4 rounded-xl text-lg transition-all inline-block">
-      Empezar Gratis →
-    </a>
+
+<!-- CTA FINAL -->
+<section class="lp-divider">
+  <div class="max-w-3xl mx-auto px-4 py-24 text-center">
+    <div class="final-cta-wrap reveal">
+      <div class="relative z-10">
+        <div class="text-6xl mb-5">&#x1F680;</div>
+        <h2 class="text-4xl sm:text-5xl font-black text-zinc-100 mb-5 leading-tight">
+          {{ lp.cta_h1 }}<br/>
+          {{ lp.cta_h2_pre }}<span style="background:linear-gradient(135deg,#818cf8,#c084fc,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">{{ lp.cta_h2 }}</span>{{ lp.cta_h2_post }}
+        </h2>
+        <p class="text-zinc-400 text-xl mb-12">{{ lp.cta_sub }}</p>
+        <a href="{% url 'accounts:register' %}" class="btn-primary text-xl px-14 py-5">
+          {{ lp.cta_btn }}
+          <i data-lucide="arrow-right" class="w-6 h-6"></i>
+        </a>
+        <p class="mt-6 text-zinc-600 text-sm">{{ lp.cta_disc }}</p>
+      </div>
+    </div>
   </div>
 </section>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  const seedForm = document.getElementById('home-seed-form');
-  const seedInput = document.getElementById('home-seed-input');
+  lucide.createIcons();
 
-  if (seedForm && seedInput) {
-    seedForm.addEventListener('submit', (ev) => {
-      ev.preventDefault();
-      const idea = seedInput.value.trim();
-      if (idea) {
-        localStorage.setItem('magicbook_seed_idea', idea);
+  const revealEls = document.querySelectorAll('.reveal, .step-card');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible');
+        observer.unobserve(entry.target);
       }
-      window.location.href = "{% url 'accounts:register' %}";
     });
-  }
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  revealEls.forEach(el => observer.observe(el));
 </script>
 {% endblock %}

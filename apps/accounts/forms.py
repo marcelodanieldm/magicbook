@@ -11,16 +11,12 @@ class RegisterForm(forms.ModelForm):
     # Password fields are defined explicitly to control UX and validation.
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={
-            'class': 'w-full bg-gray-800 border border-gray-600 text-gray-100 rounded-lg '
-                     'p-3 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500',
             'placeholder': 'Crea una contraseña segura',
         }),
         label='Contraseña',
     )
     password_confirm = forms.CharField(
         widget=forms.PasswordInput(attrs={
-            'class': 'w-full bg-gray-800 border border-gray-600 text-gray-100 rounded-lg '
-                     'p-3 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500',
             'placeholder': 'Repite la contraseña',
         }),
         label='Confirmar Contraseña',
@@ -32,14 +28,11 @@ class RegisterForm(forms.ModelForm):
         fields = ['username', 'email']
         widgets = {
             'username': forms.TextInput(attrs={
-                'class': 'w-full bg-gray-800 border border-gray-600 text-gray-100 rounded-lg '
-                         'p-3 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500',
                 'placeholder': 'Nombre de usuario',
             }),
             'email': forms.EmailInput(attrs={
-                'class': 'w-full bg-gray-800 border border-gray-600 text-gray-100 rounded-lg '
-                         'p-3 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500',
                 'placeholder': 'tu@email.com',
+                'autofocus': True,
             }),
         }
 

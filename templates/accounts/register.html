@@ -1,56 +1,177 @@
 {% extends "base.html" %}
-{% block title %}Crear Cuenta · MagicBook{% endblock %}
+{% block title %}Empieza Gratis · MagicBook{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Step transition */
+  .reg-step { transition: opacity .35s ease, transform .35s ease; }
+  .reg-step.hidden-step { opacity:0; transform:translateY(10px); pointer-events:none; position:absolute; width:100%; }
+
+  /* Input base */
+  .reg-input {
+    width:100%; background:rgba(24,24,27,.7);
+    border:1px solid rgba(255,255,255,.09);
+    color:#f4f4f5; border-radius:.75rem; padding:.85rem 1.1rem;
+    font-size:.95rem;
+    transition: border-color .2s, box-shadow .2s;
+    outline:none;
+  }
+  .reg-input:focus {
+    border-color: rgba(124,58,237,.7);
+    box-shadow: 0 0 0 3px rgba(124,58,237,.15);
+  }
+  .reg-input::placeholder { color:#52525b; }
+
+  /* Step indicator dots */
+  .step-dot { width:.55rem; height:.55rem; border-radius:9999px; transition: background .3s; }
+  .step-dot.active { background:#6366f1; }
+  .step-dot.done   { background:#34d399; }
+  .step-dot.idle   { background:rgba(255,255,255,.12); }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="min-h-[80vh] flex items-center justify-center px-4 py-12">
-  <div class="w-full max-w-md">
-    <div class="text-center mb-8">
-      <span class="text-5xl">🚀</span>
-      <h1 class="text-3xl font-extrabold mt-4 mb-2">Empieza gratis hoy</h1>
-      <p class="text-gray-400">Crea tu cuenta y lanza tu primer infoproducto.</p>
+{# Detect POST errors — if so, skip to step 2 immediately #}
+{% if form.errors %}<script>window.__regHasErrors = true;</script>{% else %}<script>window.__regHasErrors = false;</script>{% endif %}
+
+<div class="min-h-[92vh] flex items-center justify-center px-4 py-16">
+  <div class="w-full max-w-sm">
+
+    {# Brand #}
+    <div class="text-center mb-10">
+      <a href="/" class="inline-flex items-center gap-2 text-zinc-500 text-sm hover:text-zinc-300 transition-colors mb-6">
+        ← Volver
+      </a>
+      <div class="flex justify-center gap-2 mb-7">
+        <span class="step-dot active" id="dot1"></span>
+        <span class="step-dot idle"   id="dot2"></span>
+      </div>
     </div>
 
-    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8">
-      <form method="post">
+    {# ── Panel ── #}
+    <div class="relative" style="min-height:340px;">
+      <form method="post" id="reg-form">
         {% csrf_token %}
 
-        {% if form.non_field_errors %}
-          <div class="mb-4 bg-red-900/40 border border-red-700/50 text-red-300 rounded-lg px-4 py-3 text-sm">
-            {{ form.non_field_errors.0 }}
+        {# ════════ STEP 1 — Email ════════ #}
+        <div id="step1" class="reg-step">
+          <h1 class="text-3xl font-black text-zinc-100 mb-2 leading-tight text-center">
+            Introduce tu email<br/>
+            <span style="background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">
+              para empezar la magia
+            </span>
+          </h1>
+          <p class="text-zinc-500 text-sm text-center mb-8">Sin tarjeta de crédito · Gratis para siempre</p>
+
+          {% if form.email.errors %}
+            <div class="mb-4 bg-red-950/60 border border-red-800/50 text-red-300 rounded-xl px-4 py-3 text-sm">{{ form.email.errors.0 }}</div>
+          {% endif %}
+          <div class="mb-5">
+            {{ form.email }}
           </div>
-        {% endif %}
 
-        <div class="mb-4">
-          <label class="block text-sm font-semibold text-gray-300 mb-2">Usuario</label>
-          {{ form.username }}
-          {% if form.username.errors %}<p class="mt-1 text-red-400 text-xs">{{ form.username.errors.0 }}</p>{% endif %}
-        </div>
-        <div class="mb-4">
-          <label class="block text-sm font-semibold text-gray-300 mb-2">Email</label>
-          {{ form.email }}
-          {% if form.email.errors %}<p class="mt-1 text-red-400 text-xs">{{ form.email.errors.0 }}</p>{% endif %}
-        </div>
-        <div class="mb-4">
-          <label class="block text-sm font-semibold text-gray-300 mb-2">Contraseña</label>
-          {{ form.password }}
-          {% if form.password.errors %}<p class="mt-1 text-red-400 text-xs">{{ form.password.errors.0 }}</p>{% endif %}
-        </div>
-        <div class="mb-6">
-          <label class="block text-sm font-semibold text-gray-300 mb-2">Confirmar Contraseña</label>
-          {{ form.password_confirm }}
-          {% if form.password_confirm.errors %}<p class="mt-1 text-red-400 text-xs">{{ form.password_confirm.errors.0 }}</p>{% endif %}
+          <button type="button" id="btn-step1"
+                  class="w-full py-3.5 rounded-xl font-bold text-white text-base"
+                  style="background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 0 24px rgba(124,58,237,.35);">
+            Continuar →
+          </button>
+
+          <p class="text-center text-zinc-600 text-xs mt-5">
+            ¿Ya tienes cuenta?
+            <a href="{% url 'accounts:login' %}" class="text-indigo-400 hover:text-indigo-300 font-medium">Login</a>
+          </p>
         </div>
 
-        <button type="submit"
-                class="w-full bg-violet-600 hover:bg-violet-700 glow text-white font-bold py-3 rounded-xl transition-all">
-          Crear mi cuenta gratis →
-        </button>
+        {# ════════ STEP 2 — Username + Password ════════ #}
+        <div id="step2" class="reg-step hidden-step">
+          <button type="button" id="btn-back" class="flex items-center gap-1 text-zinc-500 hover:text-zinc-300 text-sm mb-6 transition-colors">
+            ← Atrás
+          </button>
+          <h2 class="text-2xl font-black text-zinc-100 mb-1">Casi listo ✨</h2>
+          <p class="text-zinc-500 text-sm mb-7">Elige tu usuario y contraseña.</p>
+
+          {% if form.non_field_errors %}
+            <div class="mb-4 bg-red-950/60 border border-red-800/50 text-red-300 rounded-xl px-4 py-3 text-sm">{{ form.non_field_errors.0 }}</div>
+          {% endif %}
+
+          <div class="mb-4">
+            <label class="block text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wide">Usuario</label>
+            {{ form.username }}
+            {% if form.username.errors %}<p class="mt-1.5 text-red-400 text-xs">{{ form.username.errors.0 }}</p>{% endif %}
+          </div>
+          <div class="mb-4">
+            <label class="block text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wide">Contraseña</label>
+            {{ form.password }}
+            {% if form.password.errors %}<p class="mt-1.5 text-red-400 text-xs">{{ form.password.errors.0 }}</p>{% endif %}
+          </div>
+          <div class="mb-7">
+            <label class="block text-xs font-semibold text-zinc-400 mb-2 uppercase tracking-wide">Confirmar contraseña</label>
+            {{ form.password_confirm }}
+            {% if form.password_confirm.errors %}<p class="mt-1.5 text-red-400 text-xs">{{ form.password_confirm.errors.0 }}</p>{% endif %}
+          </div>
+
+          <button type="submit"
+                  class="w-full py-3.5 rounded-xl font-bold text-white text-base"
+                  style="background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 0 24px rgba(124,58,237,.35);">
+            Crear mi cuenta gratis →
+          </button>
+        </div>
+
       </form>
-      <p class="text-center text-gray-500 text-sm mt-5">
-        ¿Ya tienes cuenta?
-        <a href="{% url 'accounts:login' %}" class="text-violet-400 hover:text-violet-300 font-medium">Inicia sesión</a>
-      </p>
     </div>
+
   </div>
 </div>
+
+<script>
+(function () {
+  // Apply reg-input class to all form inputs rendered by Django
+  document.querySelectorAll('#reg-form input').forEach(el => el.classList.add('reg-input'));
+
+  const step1   = document.getElementById('step1');
+  const step2   = document.getElementById('step2');
+  const dot1    = document.getElementById('dot1');
+  const dot2    = document.getElementById('dot2');
+  const btnNext = document.getElementById('btn-step1');
+  const btnBack = document.getElementById('btn-back');
+  const emailInput = document.querySelector('#reg-form input[name="email"]');
+
+  function goStep2() {
+    step1.classList.add('hidden-step');
+    step2.classList.remove('hidden-step');
+    dot1.classList.replace('active', 'done');
+    dot2.classList.replace('idle', 'active');
+    // Focus first input in step 2
+    const first = step2.querySelector('input');
+    if (first) setTimeout(() => first.focus(), 350);
+  }
+
+  function goStep1() {
+    step2.classList.add('hidden-step');
+    step1.classList.remove('hidden-step');
+    dot2.classList.replace('active', 'idle');
+    dot1.classList.replace('done', 'active');
+  }
+
+  btnNext.addEventListener('click', function () {
+    const email = emailInput ? emailInput.value.trim() : '';
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      emailInput.style.borderColor = 'rgba(239,68,68,.7)';
+      emailInput.style.boxShadow   = '0 0 0 3px rgba(239,68,68,.15)';
+      emailInput.focus();
+      return;
+    }
+    emailInput.style.borderColor = '';
+    emailInput.style.boxShadow   = '';
+    goStep2();
+  });
+
+  btnBack.addEventListener('click', goStep1);
+
+  // If coming back with POST errors, jump straight to step 2
+  if (window.__regHasErrors) {
+    goStep2();
+  }
+})();
+</script>
 {% endblock %}

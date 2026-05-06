@@ -12,6 +12,8 @@ urlpatterns = [
     path('', HomeView.as_view(), name='home'),
     path('dashboard/', include('apps.core.urls')),
     path('accounts/', include('apps.accounts.urls')),
+    # Language switcher (POST to /i18n/setlang/ with 'language' field)
+    path('i18n/', include('django.conf.urls.i18n')),
 ]
 
 if settings.DEBUG:
