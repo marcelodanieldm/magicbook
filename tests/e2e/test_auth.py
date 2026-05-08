@@ -18,6 +18,8 @@ Usage
     pytest tests/e2e/test_auth.py -v --headed   # to see the browser
 """
 
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -36,7 +38,7 @@ def test_home_page_renders_for_anonymous_user(page: Page, live_url: str):
     page.goto(live_url)
 
     # Title bar
-    expect(page).to_have_title(lambda t: "MagicBook" in t)
+    expect(page).to_have_title(re.compile("MagicBook"))
 
     # Both primary CTA buttons should be visible (es / en variants)
     ctas = page.locator("a[href*='register'], a[href*='login']")
@@ -61,7 +63,7 @@ def test_home_page_redirects_authenticated_user_to_dashboard(
 
     # Now hit root – should stay on dashboard
     page.goto(live_url)
-    expect(page).to_have_url(lambda u: "/dashboard/" in u)
+    expect(page).to_have_url(re.compile(r"/dashboard/"))
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -97,7 +99,7 @@ def test_registration_flow_redirects_to_onboarding(page: Page, live_url: str):
 
     # After successful registration, expect redirect to onboarding
     page.wait_for_url("**/accounts/plan-a/onboarding/**", timeout=8_000)
-    expect(page).to_have_url(lambda u: "plan-a/onboarding" in u)
+    expect(page).to_have_url(re.compile(r"plan-a/onboarding"))
 
 
 @pytest.mark.django_db
@@ -121,7 +123,7 @@ def test_registration_with_mismatched_passwords_shows_error(
     page.click('button[type="submit"]')
 
     # Should remain on the register page (or re-render it)
-    expect(page).to_have_url(lambda u: "register" in u or "accounts" in u)
+    expect(page).to_have_url(re.compile(r"register|accounts"))
     # The error message is somewhere in the page body
     error = page.locator("text=contraseñas no coinciden")
     expect(error).to_be_visible()
@@ -143,7 +145,7 @@ def test_authenticated_user_is_redirected_away_from_register(
     page.wait_for_url("**/dashboard/", timeout=8_000)
 
     page.goto(f"{live_url}/accounts/register/")
-    expect(page).to_have_url(lambda u: "/dashboard/" in u)
+    expect(page).to_have_url(re.compile(r"/dashboard/"))
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -167,7 +169,7 @@ def test_login_with_valid_credentials_redirects_to_dashboard(
     page.click('button[type="submit"]')
 
     page.wait_for_url("**/dashboard/", timeout=8_000)
-    expect(page).to_have_url(lambda u: "/dashboard/" in u)
+    expect(page).to_have_url(re.compile(r"/dashboard/"))
 
     # Dashboard should show at least the "Proyectos Activos" stat tile
     expect(page.locator("text=Proyectos Activos")).to_be_visible()
@@ -186,10 +188,10 @@ def test_login_with_wrong_password_shows_error(page: Page, live_url: str, auth_u
     page.click('button[type="submit"]')
 
     # Should remain on login page
-    expect(page).to_have_url(lambda u: "login" in u)
+    expect(page).to_have_url(re.compile(r"login"))
 
     # Error message contains "incorrectos"
-    error_message = page.locator("text=incorrectos")
+    error_message = page.locator("text=incorrectos").first
     expect(error_message).to_be_visible()
 
 
@@ -205,8 +207,8 @@ def test_login_with_nonexistent_user_shows_error(page: Page, live_url: str, db):
     page.fill('input[name="password"]', "anything")
     page.click('button[type="submit"]')
 
-    expect(page).to_have_url(lambda u: "login" in u)
-    expect(page.locator("text=incorrectos")).to_be_visible()
+    expect(page).to_have_url(re.compile(r"login"))
+    expect(page.locator("text=incorrectos").first).to_be_visible()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -230,11 +232,12 @@ def test_logout_terminates_session_and_redirects_to_home(
     logout_form.locator('button[type="submit"]').click()
 
     # Should end up on the home page
-    page.wait_for_url(lambda u: u.rstrip("/") == live_url.rstrip("/"), timeout=8_000)
+    page.wait_for_load_state("load")
+    assert page.url.rstrip("/") == live_url.rstrip("/")
 
     # Trying to visit dashboard should now redirect to login
     page.goto(f"{live_url}/dashboard/")
-    expect(page).to_have_url(lambda u: "login" in u)
+    expect(page).to_have_url(re.compile(r"login"))
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -249,4 +252,4 @@ def test_dashboard_redirects_anonymous_user_to_login(page: Page, live_url: str, 
     THEN  they are redirected to the login page with a `next` parameter
     """
     page.goto(f"{live_url}/dashboard/")
-    expect(page).to_have_url(lambda u: "login" in u and "next" in u)
+    expect(page).to_have_url(re.compile(r"login.*next"))

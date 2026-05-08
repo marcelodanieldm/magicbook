@@ -20,6 +20,8 @@ Usage
     pytest tests/e2e/test_projects.py -v --headed   # to watch the browser
 """
 
+import re
+
 import pytest
 from django.contrib.auth.models import User
 from playwright.sync_api import Page, expect
@@ -54,7 +56,7 @@ def test_dashboard_redirects_anonymous_user_to_login(page: Page, live_url: str, 
     THEN  they are redirected to the login page with a `next` query parameter
     """
     page.goto(f"{live_url}/dashboard/")
-    expect(page).to_have_url(lambda u: "login" in u and "next" in u)
+    expect(page).to_have_url(re.compile(r"login.*next"))
 
 
 @pytest.mark.django_db
@@ -68,7 +70,7 @@ def test_project_detail_redirects_anonymous_user_to_login(
     """
     project = _create_project(auth_user)
     page.goto(f"{live_url}/dashboard/project/{project.pk}/")
-    expect(page).to_have_url(lambda u: "login" in u)
+    expect(page).to_have_url(re.compile(r"login"))
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -106,7 +108,7 @@ def test_dashboard_shows_create_project_cta(
 
     cta = page.locator("a", has_text="Crear Nuevo Proyecto Mágico")
     expect(cta).to_be_visible()
-    expect(cta).to_have_attribute("href", lambda h: "project/new" in h)
+    expect(cta).to_have_attribute("href", re.compile(r"project/new"))
 
 
 @pytest.mark.django_db
@@ -161,19 +163,25 @@ def test_project_creation_flow_redirects_to_project_detail(
     page = authenticated_page
     page.goto(f"{live_url}/dashboard/project/new/")
 
-    # Fill niche description
-    page.fill("#id_niche_input", "Finanzas personales para millennials en LATAM")
+    # Fill niche description (dispatch input so the JS updateSubmitState enables the button)
+    niche = page.locator("#id_niche_input")
+    niche.fill("Finanzas personales para millennials en LATAM")
+    niche.dispatch_event("input")
+
+    # Wait until the submit button is enabled by the JS validator
+    submit_btn = page.locator("#create-project-submit")
+    expect(submit_btn).not_to_be_disabled()
 
     # brand_voice: first radio already pre-checked (coach); keep default
     # ai_model:    first model already pre-checked; keep default
     # primary_market: select LATAM option
     page.select_option('select[name="primary_market"]', value="LATAM")
 
-    page.click('button[type="submit"]')
+    submit_btn.click()
 
     # Should redirect to /dashboard/project/<pk>/
-    page.wait_for_url("**/dashboard/project/*/", timeout=8_000)
-    expect(page).to_have_url(lambda u: "/dashboard/project/" in u and u.endswith("/"))
+    page.wait_for_url(re.compile(r"/dashboard/project/\d+/"), timeout=8_000)
+    expect(page).to_have_url(re.compile(r"/dashboard/project/\d+/"))
 
 
 @pytest.mark.django_db
@@ -188,11 +196,10 @@ def test_project_creation_empty_niche_shows_error(
     page = authenticated_page
     page.goto(f"{live_url}/dashboard/project/new/")
 
-    # Submit without filling required niche field
-    page.click('button[type="submit"]')
-
-    # Should remain on the create page
-    expect(page).to_have_url(lambda u: "project/new" in u)
+    # JS disables the submit button until niche has >= 24 characters.
+    # Leaving the textarea empty means the button stays disabled — the form won't submit.
+    submit_btn = page.locator("#create-project-submit")
+    expect(submit_btn).to_be_disabled()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -212,8 +219,8 @@ def test_project_detail_renders_canvas_and_next_step(
     page = authenticated_page
     page.goto(f"{live_url}/dashboard/project/{project.pk}/")
 
-    # Check the 'Análisis de Nicho' panel header
-    expect(page.locator("text=Análisis de Nicho")).to_be_visible()
+    # Check the 'Análisis de Nicho' panel header (use role to avoid strict-mode violation)
+    expect(page.get_by_role("heading", name="Análisis de Nicho")).to_be_visible()
 
 
 @pytest.mark.django_db
@@ -256,7 +263,7 @@ def test_project_detail_only_accessible_by_owner(
 
     page.goto(f"{live_url}/dashboard/project/{project.pk}/")
     # Django returns 404 for queryset mismatches in get_object_or_404
-    expect(page).to_have_url(lambda u: str(project.pk) in u)  # stayed on same URL
+    expect(page).to_have_url(re.compile(str(project.pk)))  # stayed on same URL
     # 404 page should not show the "Análisis de Nicho" panel
     expect(page.locator("text=Análisis de Nicho")).not_to_be_visible()
 
@@ -287,7 +294,7 @@ def test_project_delete_removes_project_and_redirects_to_dashboard(
 
     # Should redirect to dashboard after deletion
     page.wait_for_url("**/dashboard/", timeout=8_000)
-    expect(page).to_have_url(lambda u: u.endswith("/dashboard/"))
+    expect(page).to_have_url(re.compile(r"/dashboard/"))
 
     # The project card should no longer appear
     expect(
