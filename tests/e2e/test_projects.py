@@ -1,6 +1,6 @@
 """
-E2E tests — Project management flows
-======================================
+E2E tests — Project management flows (Page Object Model)
+=========================================================
 Covers the core project management paths in MagicBook:
 
   1. Dashboard access control (anonymous → login redirect)
@@ -9,10 +9,12 @@ Covers the core project management paths in MagicBook:
   4. Project detail page renders key UI panels and next-step card
   5. Project deletion removes the project from the dashboard
 
-These tests run against a real Django live server (pytest-django `live_server`
-fixture) with a headless Chromium browser driven by Playwright.
-No AI service calls are made — project creation only saves the model; generation
-endpoints are separate AJAX calls outside this test scope.
+All browser interactions are encapsulated in page objects under
+``tests/e2e/pages/``.  Tests only contain setup, method calls on page
+objects, and assertions — no raw Playwright selectors.
+
+No AI service calls are made — project creation only saves the model;
+generation endpoints are separate AJAX calls outside this test scope.
 
 Usage
 -----
@@ -23,18 +25,26 @@ Usage
 import re
 
 import pytest
-from django.contrib.auth.models import User
 from playwright.sync_api import Page, expect
 
-from apps.core.models import Project
+from .pages.dashboard_page import DashboardPage
+from .pages.login_page import LoginPage
+from .pages.project_create_page import ProjectCreatePage
+from .pages.project_detail_page import ProjectDetailPage
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Helpers
+# DB helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _create_project(user) -> Project:
-    """Create a minimal project for the given user in the test DB."""
+def _create_project(user):
+    """
+    Create a minimal Project record for ``user`` directly in the test DB.
+
+    Bypasses the creation form so tests that only need an existing project
+    can skip the browser-based creation flow entirely.
+    """    # Import inside helper so Django is fully configured when this runs
+    from apps.core.models import Project
     return Project.objects.create(
         user=user,
         niche_input="Marketing digital para emprendedores",
@@ -53,9 +63,11 @@ def test_dashboard_redirects_anonymous_user_to_login(page: Page, live_url: str, 
     """
     GIVEN an anonymous visitor
     WHEN  they attempt to access /dashboard/ directly
-    THEN  they are redirected to the login page with a `next` query parameter
+    THEN  they are redirected to the login page with a ``next`` query parameter
     """
-    page.goto(f"{live_url}/dashboard/")
+    # DashboardPage.goto() navigates to /dashboard/
+    DashboardPage(page, live_url).goto()
+    # Django's @login_required adds ?next=/dashboard/ to the redirect URL
     expect(page).to_have_url(re.compile(r"login.*next"))
 
 
@@ -68,8 +80,10 @@ def test_project_detail_redirects_anonymous_user_to_login(
     WHEN  they navigate directly to /dashboard/project/<pk>/
     THEN  they are redirected to the login page
     """
+    # Create a project in the DB so the URL exists
     project = _create_project(auth_user)
-    page.goto(f"{live_url}/dashboard/project/{project.pk}/")
+    # Navigate as anonymous — ProjectDetailPage.goto() builds the dynamic URL
+    ProjectDetailPage(page, live_url, project.pk).goto()
     expect(page).to_have_url(re.compile(r"login"))
 
 
@@ -84,14 +98,15 @@ def test_dashboard_shows_three_stats_tiles(
     """
     GIVEN an authenticated user
     WHEN  they visit the dashboard
-    THEN  all three stats tiles are rendered with their labels
+    THEN  all three KPI stats tiles are rendered with their labels
     """
-    page = authenticated_page
-    page.goto(f"{live_url}/dashboard/")
+    dashboard = DashboardPage(authenticated_page, live_url)
+    dashboard.goto()
 
-    expect(page.locator("text=Proyectos Activos")).to_be_visible()
-    expect(page.locator("text=Infoproductos Generados")).to_be_visible()
-    expect(page.locator("text=Lanzamientos Listos")).to_be_visible()
+    # Each tile locator is a named property on DashboardPage
+    expect(dashboard.active_projects_tile).to_be_visible()
+    expect(dashboard.generated_infoproducts_tile).to_be_visible()
+    expect(dashboard.ready_launches_tile).to_be_visible()
 
 
 @pytest.mark.django_db
@@ -103,12 +118,13 @@ def test_dashboard_shows_create_project_cta(
     WHEN  they visit the dashboard
     THEN  the 'Crear Nuevo Proyecto Mágico' button is visible and links to /project/new/
     """
-    page = authenticated_page
-    page.goto(f"{live_url}/dashboard/")
+    dashboard = DashboardPage(authenticated_page, live_url)
+    dashboard.goto()
 
-    cta = page.locator("a", has_text="Crear Nuevo Proyecto Mágico")
-    expect(cta).to_be_visible()
-    expect(cta).to_have_attribute("href", re.compile(r"project/new"))
+    # CTA must be visible
+    expect(dashboard.create_project_cta).to_be_visible()
+    # Its href must point to the project creation route
+    dashboard.expect_cta_links_to_create()
 
 
 @pytest.mark.django_db
@@ -120,13 +136,14 @@ def test_dashboard_shows_existing_project_cards(
     WHEN  they visit the dashboard
     THEN  the project card is rendered with a link to its detail page
     """
+    # Create project directly in DB (no browser form needed here)
     project = _create_project(auth_user)
-    page = authenticated_page
-    page.goto(f"{live_url}/dashboard/")
 
-    # Project card should link to project detail
-    project_link = page.locator(f'a[href*="/dashboard/project/{project.pk}/"]').first
-    expect(project_link).to_be_visible()
+    dashboard = DashboardPage(authenticated_page, live_url)
+    dashboard.goto()
+
+    # project_card_link() returns the anchor for this specific PK
+    expect(dashboard.project_card_link(project.pk)).to_be_visible()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -140,15 +157,16 @@ def test_project_create_form_renders(
     """
     GIVEN an authenticated user
     WHEN  they navigate to /dashboard/project/new/
-    THEN  all form fields are rendered (niche textarea, voice cards, model cards)
+    THEN  all required form controls are rendered and visible
     """
-    page = authenticated_page
-    page.goto(f"{live_url}/dashboard/project/new/")
+    create_page = ProjectCreatePage(authenticated_page, live_url)
+    create_page.goto()
 
-    expect(page.locator("#id_niche_input")).to_be_visible()
-    expect(page.locator('[name="brand_voice"]').first).to_be_visible()
-    expect(page.locator('[name="ai_model"]').first).to_be_visible()
-    expect(page.locator('select[name="primary_market"]')).to_be_visible()
+    # Each locator is a named property on ProjectCreatePage
+    expect(create_page.niche_textarea).to_be_visible()
+    expect(create_page.brand_voice_options.first).to_be_visible()
+    expect(create_page.ai_model_options.first).to_be_visible()
+    expect(create_page.primary_market_select).to_be_visible()
 
 
 @pytest.mark.django_db
@@ -158,30 +176,27 @@ def test_project_creation_flow_redirects_to_project_detail(
     """
     GIVEN an authenticated user on the project creation page
     WHEN  they fill in the niche description and submit the form
-    THEN  a project is created and they are redirected to the project detail page
+    THEN  a project is created and they are redirected to /dashboard/project/<pk>/
     """
-    page = authenticated_page
-    page.goto(f"{live_url}/dashboard/project/new/")
+    create_page = ProjectCreatePage(authenticated_page, live_url)
+    create_page.goto()
 
-    # Fill niche description (dispatch input so the JS updateSubmitState enables the button)
-    niche = page.locator("#id_niche_input")
-    niche.fill("Finanzas personales para millennials en LATAM")
-    niche.dispatch_event("input")
+    # fill_niche() dispatches an 'input' event to trigger updateSubmitState()
+    # which enables the submit button once the niche has ≥ 24 characters
+    create_page.fill_niche("Finanzas personales para millennials en LATAM")
 
-    # Wait until the submit button is enabled by the JS validator
-    submit_btn = page.locator("#create-project-submit")
-    expect(submit_btn).not_to_be_disabled()
+    # Assert the submit button is now enabled before clicking
+    expect(create_page.submit_button).not_to_be_disabled()
 
-    # brand_voice: first radio already pre-checked (coach); keep default
-    # ai_model:    first model already pre-checked; keep default
-    # primary_market: select LATAM option
-    page.select_option('select[name="primary_market"]', value="LATAM")
+    # Select LATAM as primary market (default brand_voice & ai_model are fine)
+    create_page.select_market("LATAM")
+    create_page.submit()
 
-    submit_btn.click()
-
-    # Should redirect to /dashboard/project/<pk>/
-    page.wait_for_url(re.compile(r"/dashboard/project/\d+/"), timeout=8_000)
-    expect(page).to_have_url(re.compile(r"/dashboard/project/\d+/"))
+    # After successful creation the app redirects to /dashboard/project/<pk>/
+    authenticated_page.wait_for_url(
+        re.compile(r"/dashboard/project/\d+/"), timeout=8_000
+    )
+    expect(authenticated_page).to_have_url(re.compile(r"/dashboard/project/\d+/"))
 
 
 @pytest.mark.django_db
@@ -190,16 +205,15 @@ def test_project_creation_empty_niche_shows_error(
 ):
     """
     GIVEN an authenticated user on the project creation page
-    WHEN  they submit the form without entering a niche description
-    THEN  the form re-renders on the same page with a validation error
+    WHEN  they have not entered a niche description (empty textarea)
+    THEN  the submit button remains disabled (JS client-side validation)
     """
-    page = authenticated_page
-    page.goto(f"{live_url}/dashboard/project/new/")
+    create_page = ProjectCreatePage(authenticated_page, live_url)
+    create_page.goto()
 
-    # JS disables the submit button until niche has >= 24 characters.
-    # Leaving the textarea empty means the button stays disabled — the form won't submit.
-    submit_btn = page.locator("#create-project-submit")
-    expect(submit_btn).to_be_disabled()
+    # The submit button must start disabled — no text has been entered
+    # JS updateSubmitState() requires ≥ 24 characters to enable it
+    expect(create_page.submit_button).to_be_disabled()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -213,14 +227,15 @@ def test_project_detail_renders_canvas_and_next_step(
     """
     GIVEN an authenticated user with an existing project
     WHEN  they visit the project detail page
-    THEN  the magic canvas grid and the 'Análisis de Nicho' panel are visible
+    THEN  the 'Análisis de Nicho' panel heading is visible
     """
     project = _create_project(auth_user)
-    page = authenticated_page
-    page.goto(f"{live_url}/dashboard/project/{project.pk}/")
 
-    # Check the 'Análisis de Nicho' panel header (use role to avoid strict-mode violation)
-    expect(page.get_by_role("heading", name="Análisis de Nicho")).to_be_visible()
+    detail_page = ProjectDetailPage(authenticated_page, live_url, project.pk)
+    detail_page.goto()
+
+    # niche_analysis_heading uses get_by_role() to avoid strict-mode violations
+    expect(detail_page.niche_analysis_heading).to_be_visible()
 
 
 @pytest.mark.django_db
@@ -229,15 +244,15 @@ def test_project_detail_shows_delete_button(
 ):
     """
     GIVEN an authenticated user on their project detail page
-    WHEN  they scroll to the delete section
+    WHEN  they view the page
     THEN  the 'Eliminar proyecto' button is visible
     """
     project = _create_project(auth_user)
-    page = authenticated_page
-    page.goto(f"{live_url}/dashboard/project/{project.pk}/")
 
-    delete_btn = page.locator("button", has_text="Eliminar proyecto")
-    expect(delete_btn).to_be_visible()
+    detail_page = ProjectDetailPage(authenticated_page, live_url, project.pk)
+    detail_page.goto()
+
+    expect(detail_page.delete_button).to_be_visible()
 
 
 @pytest.mark.django_db
@@ -245,26 +260,29 @@ def test_project_detail_only_accessible_by_owner(
     page: Page, live_url: str, auth_user
 ):
     """
-    GIVEN project owned by user A
-    WHEN  user B (different account) tries to access that project's detail page
-    THEN  they receive a 404 response
+    GIVEN a project owned by user A
+    WHEN  user B tries to access that project's detail page
+    THEN  Django returns a 404 and the canvas panel is not shown
     """
     project = _create_project(auth_user)
 
-    # Create a second user and log in as them
-    other_user = User.objects.create_user(
+    # Create a second user and log in as them using LoginPage
+    from django.contrib.auth.models import User
+    User.objects.create_user(
         username="other_e2e", password="OtherPass1!", email="other@test.com"
     )
-    page.goto(f"{live_url}/accounts/login/")
-    page.fill('input[name="username"]', "other_e2e")
-    page.fill('input[name="password"]', "OtherPass1!")
-    page.click('button[type="submit"]')
+    login = LoginPage(page, live_url)
+    login.goto()
+    login.login("other_e2e", "OtherPass1!")
     page.wait_for_url("**/dashboard/", timeout=8_000)
 
-    page.goto(f"{live_url}/dashboard/project/{project.pk}/")
-    # Django returns 404 for queryset mismatches in get_object_or_404
-    expect(page).to_have_url(re.compile(str(project.pk)))  # stayed on same URL
-    # 404 page should not show the "Análisis de Nicho" panel
+    # Attempt to access the first user's project as the second user
+    detail_page = ProjectDetailPage(page, live_url, project.pk)
+    detail_page.goto()
+
+    # Django's get_object_or_404 returns 404 — URL stays the same (not redirect)
+    expect(page).to_have_url(re.compile(str(project.pk)))
+    # The canvas heading must NOT appear on a 404 page
     expect(page.locator("text=Análisis de Nicho")).not_to_be_visible()
 
 
@@ -283,23 +301,21 @@ def test_project_delete_removes_project_and_redirects_to_dashboard(
     """
     project = _create_project(auth_user)
     pk = project.pk
-    page = authenticated_page
-    page.goto(f"{live_url}/dashboard/project/{pk}/")
 
-    # Accept the JS confirm() dialog automatically
-    page.on("dialog", lambda d: d.accept())
+    detail_page = ProjectDetailPage(authenticated_page, live_url, pk)
+    detail_page.goto()
 
-    delete_form = page.locator(f'form[action*="/project/{pk}/delete/"]')
-    delete_form.locator('button[type="submit"]').click()
+    # delete_project() uses page.once("dialog", ...) and clicks the delete button
+    detail_page.delete_project()
 
-    # Should redirect to dashboard after deletion
-    page.wait_for_url("**/dashboard/", timeout=8_000)
-    expect(page).to_have_url(re.compile(r"/dashboard/"))
+    # After deletion the app must redirect to the dashboard
+    authenticated_page.wait_for_url("**/dashboard/", timeout=8_000)
+    expect(authenticated_page).to_have_url(re.compile(r"/dashboard/"))
 
-    # The project card should no longer appear
-    expect(
-        page.locator(f'a[href*="/dashboard/project/{pk}/"]')
-    ).not_to_be_visible()
+    # The project card must no longer appear on the dashboard
+    dashboard = DashboardPage(authenticated_page, live_url)
+    expect(dashboard.project_card_link(pk)).not_to_be_visible()
 
-    # Confirm it's gone from the DB
+    # Verify the record is actually gone from the database
+    from apps.core.models import Project
     assert not Project.objects.filter(pk=pk).exists()

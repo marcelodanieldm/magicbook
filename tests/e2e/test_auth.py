@@ -1,6 +1,6 @@
 """
-E2E tests — Authentication flows
-=================================
+E2E tests — Authentication flows (Page Object Model)
+=====================================================
 Covers the most critical authentication paths in MagicBook:
 
   1. Home page renders correctly for anonymous visitors
@@ -9,8 +9,9 @@ Covers the most critical authentication paths in MagicBook:
   4. Login with invalid credentials → inline error message
   5. Logout from an authenticated session → home page
 
-These tests run against a real Django live server (pytest-django `live_server`
-fixture) with a headless Chromium browser driven by Playwright.
+All browser interactions are encapsulated in page objects under
+``tests/e2e/pages/``.  Tests only contain setup, method calls on page
+objects, and assertions — no raw Playwright selectors.
 
 Usage
 -----
@@ -23,6 +24,11 @@ import re
 import pytest
 from playwright.sync_api import Page, expect
 
+from .pages.home_page import HomePage
+from .pages.login_page import LoginPage
+from .pages.register_page import RegisterPage
+from .pages.dashboard_page import DashboardPage
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 1. Landing page
@@ -33,16 +39,16 @@ def test_home_page_renders_for_anonymous_user(page: Page, live_url: str):
     """
     GIVEN an anonymous visitor
     WHEN  they navigate to the root URL
-    THEN  the landing page loads with the MagicBook hero title and CTA buttons
+    THEN  the landing page loads with the MagicBook title and CTA buttons
     """
-    page.goto(live_url)
+    home = HomePage(page, live_url)
+    home.goto()
 
-    # Title bar
-    expect(page).to_have_title(re.compile("MagicBook"))
+    # Page <title> must contain "MagicBook"
+    home.expect_title_contains("MagicBook")
 
-    # Both primary CTA buttons should be visible (es / en variants)
-    ctas = page.locator("a[href*='register'], a[href*='login']")
-    expect(ctas.first).to_be_visible()
+    # At least one link pointing to /register/ or /login/ must be visible
+    expect(home.cta_links.first).to_be_visible()
 
 
 @pytest.mark.django_db
@@ -54,15 +60,14 @@ def test_home_page_redirects_authenticated_user_to_dashboard(
     WHEN  they navigate to the root URL
     THEN  they are redirected to the dashboard without seeing the landing page
     """
-    # Log in first via the login page
-    page.goto(f"{live_url}/accounts/login/")
-    page.fill('input[name="username"]', auth_user.username)
-    page.fill('input[name="password"]', "E2ePassword1!")
-    page.click('button[type="submit"]')
+    # Log in via the login page object
+    login = LoginPage(page, live_url)
+    login.goto()
+    login.login(auth_user.username, "E2ePassword1!")
     page.wait_for_url("**/dashboard/", timeout=8_000)
 
-    # Now hit root – should stay on dashboard
-    page.goto(live_url)
+    # Visiting root while authenticated should stay on /dashboard/
+    HomePage(page, live_url).goto()
     expect(page).to_have_url(re.compile(r"/dashboard/"))
 
 
@@ -74,30 +79,20 @@ def test_home_page_redirects_authenticated_user_to_dashboard(
 def test_registration_flow_redirects_to_onboarding(page: Page, live_url: str):
     """
     GIVEN a new visitor
-    WHEN  they complete the 2-step registration form
+    WHEN  they complete the 2-step registration form with valid data
     THEN  an account is created and they are redirected to Plan A onboarding
     """
-    page.goto(f"{live_url}/accounts/register/")
+    register = RegisterPage(page, live_url)
+    register.goto()
 
-    # ── Step 1: email ─────────────────────────────────────────────────────────
-    email_input = page.locator('input[name="email"]')
-    expect(email_input).to_be_visible()
-    email_input.fill("newuser@magicbook.test")
+    # register() drives both step-1 (email) and step-2 (username/password)
+    register.register(
+        email="newuser@magicbook.test",
+        username="new_e2e_user",
+        password="StrongPass123!",
+    )
 
-    page.click("#btn-step1")
-
-    # ── Step 2: username + password ───────────────────────────────────────────
-    # The JS transition moves to step2; wait for the username field to appear
-    username_input = page.locator('input[name="username"]')
-    username_input.wait_for(state="visible", timeout=4_000)
-
-    username_input.fill("new_e2e_user")
-    page.fill('input[name="password"]', "StrongPass123!")
-    page.fill('input[name="password_confirm"]', "StrongPass123!")
-
-    page.click('button[type="submit"]')
-
-    # After successful registration, expect redirect to onboarding
+    # Successful registration must redirect to onboarding
     page.wait_for_url("**/accounts/plan-a/onboarding/**", timeout=8_000)
     expect(page).to_have_url(re.compile(r"plan-a/onboarding"))
 
@@ -108,25 +103,24 @@ def test_registration_with_mismatched_passwords_shows_error(
 ):
     """
     GIVEN a visitor on the register page
-    WHEN  they submit mismatched passwords
-    THEN  the form stays on the page and an error is shown
+    WHEN  they submit mismatched passwords in step 2
+    THEN  the form stays on the page and a mismatch error is shown
     """
-    page.goto(f"{live_url}/accounts/register/")
+    register = RegisterPage(page, live_url)
+    register.goto()
 
-    page.locator('input[name="email"]').fill("bad@magicbook.test")
-    page.click("#btn-step1")
+    # Pass an intentionally different password_confirm to trigger the error
+    register.register(
+        email="bad@magicbook.test",
+        username="baduser",
+        password="pass1234",
+        password_confirm="different",
+    )
 
-    page.locator('input[name="username"]').wait_for(state="visible", timeout=4_000)
-    page.fill('input[name="username"]', "baduser")
-    page.fill('input[name="password"]', "pass1234")
-    page.fill('input[name="password_confirm"]', "different")
-    page.click('button[type="submit"]')
-
-    # Should remain on the register page (or re-render it)
+    # Should remain on the register/accounts URL (not redirected)
     expect(page).to_have_url(re.compile(r"register|accounts"))
-    # The error message is somewhere in the page body
-    error = page.locator("text=contraseñas no coinciden")
-    expect(error).to_be_visible()
+    # The inline mismatch error must be visible
+    expect(register.password_mismatch_error).to_be_visible()
 
 
 @pytest.mark.django_db
@@ -136,15 +130,16 @@ def test_authenticated_user_is_redirected_away_from_register(
     """
     GIVEN a logged-in user
     WHEN  they try to visit the register page
-    THEN  they are redirected to the dashboard
+    THEN  they are redirected back to the dashboard
     """
-    page.goto(f"{live_url}/accounts/login/")
-    page.fill('input[name="username"]', auth_user.username)
-    page.fill('input[name="password"]', "E2ePassword1!")
-    page.click('button[type="submit"]')
+    # Log in first
+    login = LoginPage(page, live_url)
+    login.goto()
+    login.login(auth_user.username, "E2ePassword1!")
     page.wait_for_url("**/dashboard/", timeout=8_000)
 
-    page.goto(f"{live_url}/accounts/register/")
+    # Attempting to visit /register/ while authenticated should redirect
+    RegisterPage(page, live_url).goto()
     expect(page).to_have_url(re.compile(r"/dashboard/"))
 
 
@@ -159,20 +154,21 @@ def test_login_with_valid_credentials_redirects_to_dashboard(
     """
     GIVEN a registered user
     WHEN  they log in with correct credentials
-    THEN  they land on the dashboard and can see their project stats
+    THEN  they land on the dashboard and can see the 'Proyectos Activos' tile
     """
-    page.goto(f"{live_url}/accounts/login/")
+    login = LoginPage(page, live_url)
+    login.goto()
 
-    expect(page.locator('input[name="username"]')).to_be_visible()
-    page.fill('input[name="username"]', auth_user.username)
-    page.fill('input[name="password"]', "E2ePassword1!")
-    page.click('button[type="submit"]')
+    # Username field must be visible before interacting
+    expect(login.username_field).to_be_visible()
 
+    login.login(auth_user.username, "E2ePassword1!")
     page.wait_for_url("**/dashboard/", timeout=8_000)
     expect(page).to_have_url(re.compile(r"/dashboard/"))
 
-    # Dashboard should show at least the "Proyectos Activos" stat tile
-    expect(page.locator("text=Proyectos Activos")).to_be_visible()
+    # At least one dashboard stats tile must be rendered
+    dashboard = DashboardPage(page, live_url)
+    expect(dashboard.active_projects_tile).to_be_visible()
 
 
 @pytest.mark.django_db
@@ -180,19 +176,16 @@ def test_login_with_wrong_password_shows_error(page: Page, live_url: str, auth_u
     """
     GIVEN a registered user
     WHEN  they submit an incorrect password
-    THEN  they stay on the login page with an error message visible
+    THEN  they stay on the login page with the 'incorrectos' error visible
     """
-    page.goto(f"{live_url}/accounts/login/")
-    page.fill('input[name="username"]', auth_user.username)
-    page.fill('input[name="password"]', "wrong_password")
-    page.click('button[type="submit"]')
+    login = LoginPage(page, live_url)
+    login.goto()
+    login.login(auth_user.username, "wrong_password")
 
-    # Should remain on login page
+    # Must remain on the login page
     expect(page).to_have_url(re.compile(r"login"))
-
-    # Error message contains "incorrectos"
-    error_message = page.locator("text=incorrectos").first
-    expect(error_message).to_be_visible()
+    # Error message provided by the LoginPage page object
+    expect(login.error_message).to_be_visible()
 
 
 @pytest.mark.django_db
@@ -200,15 +193,14 @@ def test_login_with_nonexistent_user_shows_error(page: Page, live_url: str, db):
     """
     GIVEN no user exists for the given username
     WHEN  a login attempt is made
-    THEN  the error message is displayed on the login page
+    THEN  the 'incorrectos' error message is displayed on the login page
     """
-    page.goto(f"{live_url}/accounts/login/")
-    page.fill('input[name="username"]', "ghost_user")
-    page.fill('input[name="password"]', "anything")
-    page.click('button[type="submit"]')
+    login = LoginPage(page, live_url)
+    login.goto()
+    login.login("ghost_user", "anything")
 
     expect(page).to_have_url(re.compile(r"login"))
-    expect(page.locator("text=incorrectos").first).to_be_visible()
+    expect(login.error_message).to_be_visible()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -224,20 +216,16 @@ def test_logout_terminates_session_and_redirects_to_home(
     WHEN  they click the logout button (POST to /accounts/logout/)
     THEN  the session is destroyed and they are sent to the home page
     """
-    page = authenticated_page
+    # DashboardPage.logout() clicks the logout form and waits for load
+    dashboard = DashboardPage(authenticated_page, live_url)
+    dashboard.logout()
 
-    # Find and submit the logout form (POST form)
-    logout_form = page.locator('form[action*="logout"]')
-    expect(logout_form).to_be_visible()
-    logout_form.locator('button[type="submit"]').click()
+    # After logout the app must redirect to the root URL
+    assert authenticated_page.url.rstrip("/") == live_url.rstrip("/")
 
-    # Should end up on the home page
-    page.wait_for_load_state("load")
-    assert page.url.rstrip("/") == live_url.rstrip("/")
-
-    # Trying to visit dashboard should now redirect to login
-    page.goto(f"{live_url}/dashboard/")
-    expect(page).to_have_url(re.compile(r"login"))
+    # A subsequent visit to /dashboard/ must now redirect to login
+    dashboard.goto()
+    expect(authenticated_page).to_have_url(re.compile(r"login"))
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -249,7 +237,8 @@ def test_dashboard_redirects_anonymous_user_to_login(page: Page, live_url: str, 
     """
     GIVEN an anonymous visitor
     WHEN  they attempt to access /dashboard/ directly
-    THEN  they are redirected to the login page with a `next` parameter
+    THEN  they are redirected to the login page with a ``next`` query parameter
     """
-    page.goto(f"{live_url}/dashboard/")
+    DashboardPage(page, live_url).goto()
+    # Django's @login_required redirects to /accounts/login/?next=/dashboard/
     expect(page).to_have_url(re.compile(r"login.*next"))

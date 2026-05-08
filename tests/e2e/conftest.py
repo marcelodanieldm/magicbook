@@ -21,7 +21,6 @@ import os
 os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")
 
 import pytest
-from django.contrib.auth.models import User
 from playwright.sync_api import Page, expect
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -55,6 +54,10 @@ def live_url(live_server):
 @pytest.fixture()
 def auth_user(db):
     """Create and return a standard test user."""
+    # Import inside fixture so Django is fully configured by pytest-django
+    # before the model registry is accessed (avoids ImproperlyConfigured).
+    from django.contrib.auth.models import User
+
     return User.objects.create_user(
         username="e2euser",
         password="E2ePassword1!",
@@ -64,11 +67,20 @@ def auth_user(db):
 
 @pytest.fixture()
 def authenticated_page(page: Page, live_url: str, auth_user):
-    """Return a Playwright page that has already completed the login flow."""
-    page.goto(f"{live_url}/accounts/login/")
-    page.fill('input[name="username"]', auth_user.username)
-    page.fill('input[name="password"]', "E2ePassword1!")
-    page.click('button[type="submit"]')
-    # Wait until the dashboard is loaded after login redirect
-    page.wait_for_url(f"**/dashboard/", timeout=8_000)
+    """
+    Return a Playwright page that has already completed the login flow.
+
+    Uses the ``LoginPage`` page object so the fixture benefits from the
+    same encapsulated selectors as the login-flow tests themselves.
+    """
+    # Import here (not at module level) to avoid a circular-import issue
+    # that can arise when pytest collects conftest before the pages package.
+    from .pages.login_page import LoginPage
+
+    login = LoginPage(page, live_url)
+    login.goto()
+    # Log in using the credentials of the auth_user fixture
+    login.login(auth_user.username, "E2ePassword1!")
+    # Block until the dashboard is fully loaded
+    page.wait_for_url("**/dashboard/", timeout=8_000)
     return page
